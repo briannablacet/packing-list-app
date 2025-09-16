@@ -220,9 +220,46 @@
             color: #6c757d;
         }
 
-        .empty-icon {
-            font-size: 48px;
+        .add-item-section {
+            background: #e8f5e8;
+            border: 1px solid #c3e6cb;
+            border-radius: 10px;
+            padding: 15px;
+            margin-bottom: 20px;
+        }
+
+        .add-item-section h3 {
             margin-bottom: 15px;
+            color: #155724;
+        }
+
+        .add-item-form {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 10px;
+            align-items: end;
+        }
+
+        .add-input {
+            padding: 10px;
+            border: 2px solid #c3e6cb;
+            border-radius: 8px;
+            font-size: 14px;
+        }
+
+        .add-item-form .btn {
+            grid-column: span 2;
+            margin-top: 10px;
+        }
+
+        @media (max-width: 600px) {
+            .add-item-form {
+                grid-template-columns: 1fr;
+            }
+
+            .add-item-form .btn {
+                grid-column: span 1;
+            }
         }
     </style>
 </head>
@@ -253,6 +290,17 @@
             </div>
 
             <div id="master-content" style="display: none;">
+                <div class="add-item-section">
+                    <h3>➕ Add New Item</h3>
+                    <div class="add-item-form">
+                        <input type="text" id="new-item-name" placeholder="Item name" class="add-input">
+                        <select id="new-item-category" class="add-input">
+                            <option value="">Select category</option>
+                        </select>
+                        <input type="text" id="new-item-notes" placeholder="Notes (optional)" class="add-input">
+                        <button onclick="addNewItem()" class="btn">Add Item</button>
+                    </div>
+                </div>
                 <input type="text" id="search" class="search-box" placeholder="🔍 Search items..."
                     onkeyup="filterItems()">
                 <div id="master-items"></div>
@@ -307,6 +355,7 @@
             if (savedData) {
                 masterData = JSON.parse(savedData);
                 showMasterContent();
+                populateCategories();
                 renderMasterList();
                 updateTripStats();
             }
@@ -336,6 +385,7 @@
 
                     saveData();
                     showMasterContent();
+                    populateCategories();
                     renderMasterList();
                     updateTripStats();
 
@@ -349,6 +399,7 @@
             masterData = [...sampleData];
             saveData();
             showMasterContent();
+            populateCategories();
             renderMasterList();
             updateTripStats();
         }
@@ -357,6 +408,89 @@
         function showMasterContent() {
             document.getElementById('import-section').style.display = 'none';
             document.getElementById('master-content').style.display = 'block';
+        }
+
+        // Populate category dropdown with existing categories
+        function populateCategories() {
+            const categories = [...new Set(masterData.map(item => item.category))].sort();
+            const select = document.getElementById('new-item-category');
+
+            // Clear existing options except the first one
+            select.innerHTML = '<option value="">Select category</option>';
+
+            categories.forEach(category => {
+                const option = document.createElement('option');
+                option.value = category;
+                option.textContent = category;
+                select.appendChild(option);
+            });
+
+            // Add "Other" option
+            const otherOption = document.createElement('option');
+            otherOption.value = 'Other';
+            otherOption.textContent = '+ Add New Category';
+            select.appendChild(otherOption);
+        }
+
+        // Add new item function
+        function addNewItem() {
+            const itemName = document.getElementById('new-item-name').value.trim();
+            const categorySelect = document.getElementById('new-item-category');
+            let category = categorySelect.value;
+            const notes = document.getElementById('new-item-notes').value.trim();
+
+            // Validate input
+            if (!itemName) {
+                alert('Please enter an item name');
+                return;
+            }
+
+            // Handle new category
+            if (category === 'Other' || !category) {
+                category = prompt('Enter new category name:');
+                if (!category) {
+                    alert('Please select or enter a category');
+                    return;
+                }
+                category = category.trim();
+            }
+
+            // Check if item already exists
+            const existingItem = masterData.find(item =>
+                item.item.toLowerCase() === itemName.toLowerCase() &&
+                item.category.toLowerCase() === category.toLowerCase()
+            );
+
+            if (existingItem) {
+                alert('This item already exists in this category');
+                return;
+            }
+
+            // Create new item
+            const newItem = {
+                id: Math.max(...masterData.map(item => item.id), 0) + 1,
+                item: itemName,
+                category: category,
+                bring: false,
+                packed: false,
+                notes: notes
+            };
+
+            // Add to master data
+            masterData.push(newItem);
+            saveData();
+
+            // Clear form
+            document.getElementById('new-item-name').value = '';
+            document.getElementById('new-item-category').value = '';
+            document.getElementById('new-item-notes').value = '';
+
+            // Refresh displays
+            populateCategories();
+            renderMasterList();
+            updateTripStats();
+
+            alert(`✅ "${itemName}" added to ${category}!`);
         }
 
         // Save data to localStorage
