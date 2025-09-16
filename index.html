@@ -1,0 +1,556 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>My Packing List</title>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/PapaParse/5.4.1/papaparse.min.js"></script>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            min-height: 100vh;
+            padding: 10px;
+        }
+
+        .app-container {
+            max-width: 600px;
+            margin: 0 auto;
+            background: white;
+            border-radius: 20px;
+            box-shadow: 0 20px 40px rgba(0, 0, 0, 0.1);
+            overflow: hidden;
+        }
+
+        .header {
+            background: linear-gradient(135deg, #4facfe 0%, #00f2fe 100%);
+            color: white;
+            padding: 20px;
+            text-align: center;
+        }
+
+        .header h1 {
+            font-size: 24px;
+            margin-bottom: 10px;
+        }
+
+        .tab-buttons {
+            display: flex;
+            background: #f8f9fa;
+            border-bottom: 1px solid #e9ecef;
+        }
+
+        .tab-button {
+            flex: 1;
+            padding: 15px;
+            background: none;
+            border: none;
+            font-size: 16px;
+            cursor: pointer;
+            transition: all 0.3s;
+        }
+
+        .tab-button.active {
+            background: white;
+            border-bottom: 3px solid #4facfe;
+            color: #4facfe;
+            font-weight: 600;
+        }
+
+        .content {
+            padding: 20px;
+            max-height: 70vh;
+            overflow-y: auto;
+        }
+
+        .search-box {
+            width: 100%;
+            padding: 12px;
+            margin-bottom: 20px;
+            border: 2px solid #e9ecef;
+            border-radius: 10px;
+            font-size: 16px;
+        }
+
+        .category-section {
+            margin-bottom: 25px;
+        }
+
+        .category-header {
+            background: #f8f9fa;
+            padding: 12px 15px;
+            border-radius: 10px;
+            font-weight: 600;
+            color: #495057;
+            margin-bottom: 10px;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+
+        .category-count {
+            background: #6c757d;
+            color: white;
+            padding: 4px 8px;
+            border-radius: 15px;
+            font-size: 12px;
+        }
+
+        .item {
+            display: flex;
+            align-items: center;
+            padding: 15px;
+            margin-bottom: 8px;
+            background: #f8f9fa;
+            border-radius: 10px;
+            transition: all 0.3s;
+        }
+
+        .item:hover {
+            background: #e9ecef;
+        }
+
+        .item.packed {
+            opacity: 0.6;
+            background: #d4edda;
+        }
+
+        .checkbox {
+            width: 20px;
+            height: 20px;
+            margin-right: 15px;
+            cursor: pointer;
+        }
+
+        .item-content {
+            flex: 1;
+        }
+
+        .item-name {
+            font-weight: 500;
+            color: #212529;
+            margin-bottom: 4px;
+        }
+
+        .item-notes {
+            font-size: 12px;
+            color: #6c757d;
+            font-style: italic;
+        }
+
+        .remove-btn {
+            background: #dc3545;
+            color: white;
+            border: none;
+            padding: 6px 12px;
+            border-radius: 15px;
+            font-size: 12px;
+            cursor: pointer;
+            margin-left: 10px;
+        }
+
+        .stats {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            padding: 15px;
+            border-radius: 10px;
+            margin-bottom: 20px;
+            text-align: center;
+        }
+
+        .stats-grid {
+            display: grid;
+            grid-template-columns: 1fr 1fr 1fr;
+            gap: 15px;
+            margin-top: 10px;
+        }
+
+        .stat-item {
+            text-align: center;
+        }
+
+        .stat-number {
+            font-size: 24px;
+            font-weight: bold;
+        }
+
+        .stat-label {
+            font-size: 12px;
+            opacity: 0.8;
+        }
+
+        .import-section {
+            background: #fff3cd;
+            border: 1px solid #ffeaa7;
+            border-radius: 10px;
+            padding: 20px;
+            margin-bottom: 20px;
+            text-align: center;
+        }
+
+        .file-input {
+            margin: 10px 0;
+        }
+
+        .btn {
+            background: #4facfe;
+            color: white;
+            border: none;
+            padding: 12px 24px;
+            border-radius: 10px;
+            font-size: 16px;
+            cursor: pointer;
+            transition: all 0.3s;
+        }
+
+        .btn:hover {
+            background: #0056b3;
+        }
+
+        .empty-state {
+            text-align: center;
+            padding: 40px 20px;
+            color: #6c757d;
+        }
+
+        .empty-icon {
+            font-size: 48px;
+            margin-bottom: 15px;
+        }
+    </style>
+</head>
+
+<body>
+    <div class="app-container">
+        <div class="header">
+            <h1>🎒 My Packing List</h1>
+            <p>Never forget anything again!</p>
+        </div>
+
+        <div class="tab-buttons">
+            <button class="tab-button active" onclick="showTab('master')">
+                📋 Master List
+            </button>
+            <button class="tab-button" onclick="showTab('trip')">
+                ✈️ Trip List
+            </button>
+        </div>
+
+        <div id="master-tab" class="content">
+            <div id="import-section" class="import-section">
+                <h3>📁 Import Your Data</h3>
+                <p>Upload your CSV file to get started</p>
+                <input type="file" id="csv-file" accept=".csv" class="file-input">
+                <br>
+                <button onclick="loadSampleData()" class="btn">Or Load Sample Data</button>
+            </div>
+
+            <div id="master-content" style="display: none;">
+                <input type="text" id="search" class="search-box" placeholder="🔍 Search items..."
+                    onkeyup="filterItems()">
+                <div id="master-items"></div>
+            </div>
+        </div>
+
+        <div id="trip-tab" class="content" style="display: none;">
+            <div class="stats">
+                <h3>📊 Trip Progress</h3>
+                <div class="stats-grid">
+                    <div class="stat-item">
+                        <div class="stat-number" id="total-selected">0</div>
+                        <div class="stat-label">To Pack</div>
+                    </div>
+                    <div class="stat-item">
+                        <div class="stat-number" id="total-packed">0</div>
+                        <div class="stat-label">Packed</div>
+                    </div>
+                    <div class="stat-item">
+                        <div class="stat-number" id="progress-percent">0%</div>
+                        <div class="stat-label">Complete</div>
+                    </div>
+                </div>
+            </div>
+            <div id="trip-items"></div>
+        </div>
+    </div>
+
+    <script>
+        // Global data storage
+        let masterData = [];
+        let currentTab = 'master';
+
+        // Sample data structure based on your CSV
+        const sampleData = [
+            { id: 1, item: "Laptop", category: "Electronics", bring: false, packed: false, notes: "Work laptop" },
+            { id: 2, item: "Charger", category: "Electronics", bring: false, packed: false, notes: "USB-C" },
+            { id: 3, item: "T-shirts", category: "Clothes", bring: false, packed: false, notes: "3-4 pieces" },
+            { id: 4, item: "Jeans", category: "Clothes", bring: false, packed: false, notes: "Comfortable pair" },
+            { id: 5, item: "Toothbrush", category: "Toiletries", bring: false, packed: false, notes: "Electric" },
+            { id: 6, item: "Toothpaste", category: "Toiletries", bring: false, packed: false, notes: "Travel size" },
+            { id: 7, item: "Passport", category: "Documents", bring: false, packed: false, notes: "Check expiry" },
+            { id: 8, item: "Tickets", category: "Documents", bring: false, packed: false, notes: "Print backup" },
+            { id: 9, item: "Sunglasses", category: "Accessories", bring: false, packed: false, notes: "UV protection" },
+            { id: 10, item: "Camera", category: "Electronics", bring: false, packed: false, notes: "Don't forget SD card" }
+        ];
+
+        // Initialize app
+        document.addEventListener('DOMContentLoaded', function () {
+            // Check if data exists in localStorage
+            const savedData = localStorage.getItem('packingListData');
+            if (savedData) {
+                masterData = JSON.parse(savedData);
+                showMasterContent();
+                renderMasterList();
+                updateTripStats();
+            }
+
+            // CSV file upload handler
+            document.getElementById('csv-file').addEventListener('change', handleFileUpload);
+        });
+
+        // Handle CSV file upload
+        function handleFileUpload(event) {
+            const file = event.target.files[0];
+            if (!file) return;
+
+            Papa.parse(file, {
+                header: true,
+                dynamicTyping: true,
+                complete: function (results) {
+                    // Convert CSV format to our format
+                    masterData = results.data.map((row, index) => ({
+                        id: index + 1,
+                        item: row['Items to Pack'] || row.item || 'Unknown Item',
+                        category: row['Category'] || row.category || 'Other',
+                        bring: row['Bring?'] || row.bring || false,
+                        packed: row['Packed?'] || row.packed || false,
+                        notes: row['Notes'] || row.notes || ''
+                    })).filter(item => item.item && item.item !== 'Unknown Item');
+
+                    saveData();
+                    showMasterContent();
+                    renderMasterList();
+                    updateTripStats();
+
+                    alert(`✅ Loaded ${masterData.length} items successfully!`);
+                }
+            });
+        }
+
+        // Load sample data
+        function loadSampleData() {
+            masterData = [...sampleData];
+            saveData();
+            showMasterContent();
+            renderMasterList();
+            updateTripStats();
+        }
+
+        // Show master content and hide import section
+        function showMasterContent() {
+            document.getElementById('import-section').style.display = 'none';
+            document.getElementById('master-content').style.display = 'block';
+        }
+
+        // Save data to localStorage
+        function saveData() {
+            localStorage.setItem('packingListData', JSON.stringify(masterData));
+        }
+
+        // Tab switching
+        function showTab(tab) {
+            currentTab = tab;
+
+            // Update tab buttons
+            document.querySelectorAll('.tab-button').forEach(btn => btn.classList.remove('active'));
+            event.target.classList.add('active');
+
+            // Show/hide content
+            if (tab === 'master') {
+                document.getElementById('master-tab').style.display = 'block';
+                document.getElementById('trip-tab').style.display = 'none';
+                renderMasterList();
+            } else {
+                document.getElementById('master-tab').style.display = 'none';
+                document.getElementById('trip-tab').style.display = 'block';
+                renderTripList();
+                updateTripStats();
+            }
+        }
+
+        // Render master list with categories
+        function renderMasterList() {
+            const container = document.getElementById('master-items');
+            if (!masterData.length) {
+                container.innerHTML = '<div class="empty-state"><div class="empty-icon">📦</div><p>No items loaded yet</p></div>';
+                return;
+            }
+
+            // Group by category
+            const categories = {};
+            masterData.forEach(item => {
+                if (!categories[item.category]) {
+                    categories[item.category] = [];
+                }
+                categories[item.category].push(item);
+            });
+
+            let html = '';
+            Object.keys(categories).sort().forEach(category => {
+                const items = categories[category];
+                const selectedCount = items.filter(item => item.bring).length;
+
+                html += `
+                    <div class="category-section">
+                        <div class="category-header">
+                            ${category}
+                            <span class="category-count">${selectedCount}/${items.length}</span>
+                        </div>
+                `;
+
+                items.forEach(item => {
+                    html += `
+                        <div class="item">
+                            <input type="checkbox" class="checkbox" ${item.bring ? 'checked' : ''} 
+                                   onchange="toggleBring(${item.id})">
+                            <div class="item-content">
+                                <div class="item-name">${item.item}</div>
+                                ${item.notes ? `<div class="item-notes">${item.notes}</div>` : ''}
+                            </div>
+                        </div>
+                    `;
+                });
+
+                html += '</div>';
+            });
+
+            container.innerHTML = html;
+        }
+
+        // Render trip list (only selected items)
+        function renderTripList() {
+            const container = document.getElementById('trip-items');
+            const selectedItems = masterData.filter(item => item.bring);
+
+            if (!selectedItems.length) {
+                container.innerHTML = '<div class="empty-state"><div class="empty-icon">✈️</div><p>No items selected for this trip</p><p>Go to Master List to select items</p></div>';
+                return;
+            }
+
+            // Group by category
+            const categories = {};
+            selectedItems.forEach(item => {
+                if (!categories[item.category]) {
+                    categories[item.category] = [];
+                }
+                categories[item.category].push(item);
+            });
+
+            let html = '';
+            Object.keys(categories).sort().forEach(category => {
+                const items = categories[category];
+                const packedCount = items.filter(item => item.packed).length;
+
+                html += `
+                    <div class="category-section">
+                        <div class="category-header">
+                            ${category}
+                            <span class="category-count">${packedCount}/${items.length} packed</span>
+                        </div>
+                `;
+
+                items.forEach(item => {
+                    html += `
+                        <div class="item ${item.packed ? 'packed' : ''}">
+                            <input type="checkbox" class="checkbox" ${item.packed ? 'checked' : ''} 
+                                   onchange="togglePacked(${item.id})">
+                            <div class="item-content">
+                                <div class="item-name">${item.item}</div>
+                                ${item.notes ? `<div class="item-notes">${item.notes}</div>` : ''}
+                            </div>
+                            <button class="remove-btn" onclick="removeFromTrip(${item.id})">Remove</button>
+                        </div>
+                    `;
+                });
+
+                html += '</div>';
+            });
+
+            container.innerHTML = html;
+        }
+
+        // Toggle item for trip
+        function toggleBring(id) {
+            const item = masterData.find(item => item.id === id);
+            if (item) {
+                item.bring = !item.bring;
+                if (!item.bring) {
+                    item.packed = false; // Reset packed status if removed from trip
+                }
+                saveData();
+                renderMasterList();
+                updateTripStats();
+            }
+        }
+
+        // Toggle packed status
+        function togglePacked(id) {
+            const item = masterData.find(item => item.id === id);
+            if (item) {
+                item.packed = !item.packed;
+                saveData();
+                renderTripList();
+                updateTripStats();
+            }
+        }
+
+        // Remove item from trip
+        function removeFromTrip(id) {
+            const item = masterData.find(item => item.id === id);
+            if (item) {
+                item.bring = false;
+                item.packed = false;
+                saveData();
+                renderTripList();
+                updateTripStats();
+            }
+        }
+
+        // Update trip statistics
+        function updateTripStats() {
+            const selectedItems = masterData.filter(item => item.bring);
+            const packedItems = selectedItems.filter(item => item.packed);
+            const progress = selectedItems.length > 0 ? Math.round((packedItems.length / selectedItems.length) * 100) : 0;
+
+            document.getElementById('total-selected').textContent = selectedItems.length;
+            document.getElementById('total-packed').textContent = packedItems.length;
+            document.getElementById('progress-percent').textContent = progress + '%';
+        }
+
+        // Filter items in master list
+        function filterItems() {
+            const searchTerm = document.getElementById('search').value.toLowerCase();
+            const items = document.querySelectorAll('#master-items .item');
+
+            items.forEach(item => {
+                const itemName = item.querySelector('.item-name').textContent.toLowerCase();
+                const itemNotes = item.querySelector('.item-notes')?.textContent.toLowerCase() || '';
+
+                if (itemName.includes(searchTerm) || itemNotes.includes(searchTerm)) {
+                    item.style.display = 'flex';
+                } else {
+                    item.style.display = 'none';
+                }
+            });
+        }
+    </script>
+</body>
+
+</html>
