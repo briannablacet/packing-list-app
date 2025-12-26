@@ -18,7 +18,7 @@ function App() {
         .select('*')
         .order('category', { ascending: true })
         .order('items_to_pack', { ascending: true });
-      
+
       if (error) throw error;
       setItems(data || []);
     } catch (error) {
@@ -44,7 +44,7 @@ function App() {
         .from('packing_items')
         .insert(formattedItems)
         .select();
-      
+
       if (error) throw error;
       return data;
     } catch (error) {
@@ -111,12 +111,12 @@ function App() {
       try {
         const text = e.target.result;
         const lines = text.split('\n').filter(line => line.trim());
-        
+
         // Skip header line, process data lines
         const importedItems = [];
         for (let i = 1; i < lines.length; i++) {
           const values = lines[i].split(',').map(v => v.replace(/"/g, '').trim());
-          
+
           // Format: Bring?,Packed?,Items to Pack,Category,Notes
           if (values[2]) { // Check if "Items to Pack" exists
             importedItems.push({
@@ -128,7 +128,7 @@ function App() {
             });
           }
         }
-        
+
         if (importedItems.length > 0) {
           // Save to database
           const savedItems = await saveItemsToDatabase(importedItems);
@@ -138,13 +138,13 @@ function App() {
             alert(`✅ Imported ${savedItems.length} items to database!`);
           }
         }
-        
+
       } catch (error) {
         console.error('Error:', error);
         alert('Error reading CSV file');
       }
     };
-    
+
     reader.readAsText(file);
     event.target.value = '';
   };
@@ -153,7 +153,7 @@ function App() {
   const exportToCSV = () => {
     const csvContent = [
       'Bring?,Packed?,Items to Pack,Category,Notes',
-      ...items.map(item => 
+      ...items.map(item =>
         `"${item.bring_flag}","${item.packed_flag}","${item.items_to_pack}","${item.category}","${item.notes}"`
       )
     ].join('\n');
@@ -169,14 +169,14 @@ function App() {
 
   // Clear all data from database
   const clearAllData = async () => {
-    if (!confirm('Delete all items from database? This cannot be undone.')) return;
-    
+    if (!window.confirm('Delete all items from database? This cannot be undone.')) return;
+
     try {
       const { error } = await supabase
         .from('packing_items')
         .delete()
         .neq('id', 0); // Delete all rows
-      
+
       if (error) throw error;
       setItems([]);
       alert('✅ All items deleted from database');
@@ -197,7 +197,7 @@ function App() {
   return (
     <div style={{ padding: '20px', fontFamily: 'Arial, sans-serif', backgroundColor: '#f8f9fa', minHeight: '100vh' }}>
       {/* Header */}
-      <div style={{ 
+      <div style={{
         marginBottom: '20px',
         padding: '20px',
         background: 'linear-gradient(135deg, #667eea 0%, #764ba2 100%)',
@@ -210,13 +210,13 @@ function App() {
           Database Storage • Format: Bring?,Packed?,Items to Pack,Category,Notes
         </p>
       </div>
-      
+
       {/* Actions */}
       <div style={{ marginBottom: '20px', display: 'flex', gap: '10px', flexWrap: 'wrap' }}>
-        <label style={{ 
-          backgroundColor: '#28a745', 
-          color: 'white', 
-          padding: '12px 20px', 
+        <label style={{
+          backgroundColor: '#28a745',
+          color: 'white',
+          padding: '12px 20px',
           borderRadius: '8px',
           cursor: 'pointer',
           border: 'none',
@@ -231,8 +231,8 @@ function App() {
             style={{ display: 'none' }}
           />
         </label>
-        
-        <button 
+
+        <button
           onClick={exportToCSV}
           disabled={items.length === 0}
           style={{
@@ -249,7 +249,7 @@ function App() {
           📥 Export CSV ({items.length} items)
         </button>
 
-        <button 
+        <button
           onClick={loadSampleDataToDatabase}
           style={{
             backgroundColor: '#ffc107',
@@ -265,7 +265,7 @@ function App() {
           📦 Load Sample Data
         </button>
 
-        <button 
+        <button
           onClick={loadItemsFromDatabase}
           style={{
             backgroundColor: '#6f42c1',
@@ -281,7 +281,7 @@ function App() {
           🔄 Refresh
         </button>
 
-        <button 
+        <button
           onClick={clearAllData}
           disabled={items.length === 0}
           style={{
@@ -325,7 +325,7 @@ function App() {
           </div>
           <div style={{ textAlign: 'center' }}>
             <div style={{ fontSize: '24px', fontWeight: 'bold', color: '#17a2b8' }}>
-              {items.filter(i => i.bring_flag === 'YES').length > 0 
+              {items.filter(i => i.bring_flag === 'YES').length > 0
                 ? Math.round((items.filter(i => i.packed_flag === 'YES').length / items.filter(i => i.bring_flag === 'YES').length) * 100)
                 : 0}%
             </div>
@@ -339,11 +339,11 @@ function App() {
         <h3 style={{ marginBottom: '15px', color: '#333' }}>
           Items from Database ({items.length})
         </h3>
-        
+
         {items.length === 0 ? (
-          <div style={{ 
-            textAlign: 'center', 
-            padding: '60px 20px', 
+          <div style={{
+            textAlign: 'center',
+            padding: '60px 20px',
             color: '#666',
             background: 'white',
             borderRadius: '12px',
@@ -367,8 +367,8 @@ function App() {
                 <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: '10px' }}>
                   <div>
                     <h4 style={{ margin: 0, fontSize: '18px', color: '#333' }}>{item.items_to_pack}</h4>
-                    <span style={{ 
-                      fontSize: '14px', 
+                    <span style={{
+                      fontSize: '14px',
                       color: '#666',
                       backgroundColor: '#f8f9fa',
                       padding: '4px 8px',
@@ -403,10 +403,10 @@ function App() {
                   </div>
                 </div>
                 {item.notes && (
-                  <div style={{ 
-                    marginTop: '12px', 
-                    fontStyle: 'italic', 
-                    color: '#666', 
+                  <div style={{
+                    marginTop: '12px',
+                    fontStyle: 'italic',
+                    color: '#666',
                     fontSize: '14px',
                     backgroundColor: '#f8f9fa',
                     padding: '8px 12px',
