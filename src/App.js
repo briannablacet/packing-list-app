@@ -13,7 +13,7 @@ const dbHelpers = {
         .select('*')
         .order('category', { ascending: true })
         .order('items_to_pack', { ascending: true });
-      
+
       if (error) throw error;
       return data || [];
     } catch (error) {
@@ -37,7 +37,7 @@ const dbHelpers = {
           notes: item.notes
         }])
         .select();
-      
+
       if (error) throw error;
       return data[0];
     } catch (error) {
@@ -62,7 +62,7 @@ const dbHelpers = {
         })
         .eq('id', item.id)
         .select();
-      
+
       if (error) throw error;
       return data[0];
     } catch (error) {
@@ -79,7 +79,7 @@ const dbHelpers = {
         .from('packing_items')
         .delete()
         .in('id', ids);
-      
+
       if (error) throw error;
       return true;
     } catch (error) {
@@ -105,7 +105,7 @@ const dbHelpers = {
         .from('packing_items')
         .insert(formattedItems)
         .select();
-      
+
       if (error) throw error;
       return data;
     } catch (error) {
@@ -128,8 +128,8 @@ const ItemForm = ({ onSave, onCancel, editingItem }) => {
   });
 
   const categories = [
-    'Electronics', 'Toiletries', 'Clothing', 'Outerwear', 'Underwear', 
-    'Shoes', 'Accessories', 'Misc', 'To Do', 'Cosmetics', 'Dive Gear', 
+    'Electronics', 'Toiletries', 'Clothing', 'Outerwear', 'Underwear',
+    'Shoes', 'Accessories', 'Misc', 'To Do', 'Cosmetics', 'Dive Gear',
     'Tops', 'Bottoms', 'Dress-Up Clothes', 'Socks'
   ];
 
@@ -143,7 +143,7 @@ const ItemForm = ({ onSave, onCancel, editingItem }) => {
       alert('Please select a category');
       return;
     }
-    
+
     onSave({
       ...editingItem,
       ...formData
@@ -281,32 +281,32 @@ const DeleteConfirmationModal = ({ items, onConfirm, onCancel }) => (
         </div>
       </div>
     </div>
-  );
+    );
 };
 
 // Main App Component
 const App = () => {
   const [user, setUser] = useState(null);
-  const [loading, setLoading] = useState(true);
-  const [packingItems, setPackingItems] = useState([]);
-  const [showItemForm, setShowItemForm] = useState(false);
-  const [editingItem, setEditingItem] = useState(null);
-  const [selectedItems, setSelectedItems] = useState(new Set());
-  const [deleteConfirmation, setDeleteConfirmation] = useState(null);
-  const [searchTerm, setSearchTerm] = useState('');
-  const [selectedCategory, setSelectedCategory] = useState('all');
+    const [loading, setLoading] = useState(true);
+    const [packingItems, setPackingItems] = useState([]);
+    const [showItemForm, setShowItemForm] = useState(false);
+    const [editingItem, setEditingItem] = useState(null);
+    const [selectedItems, setSelectedItems] = useState(new Set());
+    const [deleteConfirmation, setDeleteConfirmation] = useState(null);
+    const [searchTerm, setSearchTerm] = useState('');
+    const [selectedCategory, setSelectedCategory] = useState('all');
 
   // Authentication state management
   useEffect(() => {
-    supabase.auth.getSession().then(({ data: { session } }) => {
-      setUser(session?.user ?? null);
-      setLoading(false);
-    });
+      supabase.auth.getSession().then(({ data: { session } }) => {
+        setUser(session?.user ?? null);
+        setLoading(false);
+      });
 
-    const { data: { subscription } } = supabase.auth.onAuthStateChange(async (event, session) => {
+    const {data: {subscription} } = supabase.auth.onAuthStateChange(async (event, session) => {
       setUser(session?.user ?? null);
-      if (event === 'SIGNED_OUT') {
-        setPackingItems([]);
+    if (event === 'SIGNED_OUT') {
+      setPackingItems([]);
       }
     });
 
@@ -321,10 +321,10 @@ const App = () => {
   }, [user]);
 
   const loadAllData = async () => {
-    setLoading(true);
+      setLoading(true);
     try {
       const data = await dbHelpers.loadPackingItems();
-      setPackingItems(data);
+    setPackingItems(data);
     } catch (error) {
       console.error('Error loading data:', error);
     } finally {
@@ -338,50 +338,50 @@ const App = () => {
   // Filter items
   const filteredItems = packingItems.filter(item => {
     const matchesSearch = item.items_to_pack.toLowerCase().includes(searchTerm.toLowerCase()) ||
-                         item.notes.toLowerCase().includes(searchTerm.toLowerCase()) ||
-                         item.category.toLowerCase().includes(searchTerm.toLowerCase());
+    item.notes.toLowerCase().includes(searchTerm.toLowerCase()) ||
+    item.category.toLowerCase().includes(searchTerm.toLowerCase());
     const matchesCategory = selectedCategory === 'all' || item.category === selectedCategory;
-    
+
     return matchesSearch && matchesCategory;
   });
 
-  // Statistics
-  const stats = {
-    total: packingItems.length,
+    // Statistics
+    const stats = {
+      total: packingItems.length,
     bring: packingItems.filter(item => item.bring_flag === 'YES').length,
     packed: packingItems.filter(item => item.packed_flag === 'YES').length,
     percentage: packingItems.filter(item => item.bring_flag === 'YES').length > 0 
       ? Math.round((packingItems.filter(item => item.packed_flag === 'YES').length / packingItems.filter(item => item.bring_flag === 'YES').length) * 100)
-      : 0
+    : 0
   };
 
   const handleAddItem = async (itemData) => {
     const newItem = await dbHelpers.savePackingItem(itemData);
     if (newItem) {
       setPackingItems([...packingItems, newItem]);
-      setShowItemForm(false);
-      setEditingItem(null);
+    setShowItemForm(false);
+    setEditingItem(null);
     }
   };
 
   const handleUpdateItem = async (itemData) => {
     const updatedItem = await dbHelpers.updatePackingItem(itemData);
     if (updatedItem) {
-      setPackingItems(packingItems.map(item => 
+      setPackingItems(packingItems.map(item =>
         item.id === updatedItem.id ? updatedItem : item
       ));
-      setShowItemForm(false);
-      setEditingItem(null);
+    setShowItemForm(false);
+    setEditingItem(null);
     }
   };
 
   const handleEditItem = (item) => {
-    setEditingItem(item);
+      setEditingItem(item);
     setShowItemForm(true);
   };
 
   const handleDeleteItems = (itemsToDelete) => {
-    setDeleteConfirmation(itemsToDelete);
+      setDeleteConfirmation(itemsToDelete);
   };
 
   const confirmDelete = async () => {
@@ -389,19 +389,19 @@ const App = () => {
     const success = await dbHelpers.deletePackingItems(ids);
     if (success) {
       setPackingItems(packingItems.filter(item => !ids.includes(item.id)));
-      setSelectedItems(new Set());
+    setSelectedItems(new Set());
     }
     setDeleteConfirmation(null);
   };
 
   const handleQuickToggle = async (item, field) => {
-    let updatedItem;
+      let updatedItem;
     if (field === 'bring_flag') {
       updatedItem = { ...item, bring_flag: item.bring_flag === 'YES' ? 'NO' : 'YES' };
     } else if (field === 'packed_flag') {
       updatedItem = { ...item, packed_flag: item.packed_flag === 'YES' ? 'NO' : 'YES' };
     }
-    
+
     const result = await dbHelpers.updatePackingItem(updatedItem);
     if (result) {
       setPackingItems(packingItems.map(i => i.id === item.id ? result : i));
@@ -419,11 +419,11 @@ const App = () => {
   };
 
   const selectAllVisible = () => {
-    setSelectedItems(new Set(filteredItems.map(item => item.id)));
+      setSelectedItems(new Set(filteredItems.map(item => item.id)));
   };
 
   const clearSelection = () => {
-    setSelectedItems(new Set());
+      setSelectedItems(new Set());
   };
 
   const handleBulkDelete = () => {
@@ -434,13 +434,13 @@ const App = () => {
   // CSV Export - using EXACT field names from user's CSV
   const exportToCSV = () => {
     const csvContent = [
-      'ID,Bring?,Packed?,Items to Pack,Category,Notes',
-      ...packingItems.map(item => 
-        `"${item.id_flag || ''}","${item.bring_flag}","${item.packed_flag}","${item.items_to_pack}","${item.category}","${item.notes}"`
-      )
+    'ID,Bring?,Packed?,Items to Pack,Category,Notes',
+      ...packingItems.map(item =>
+    `"${item.id_flag || ''}","${item.bring_flag}","${item.packed_flag}","${item.items_to_pack}","${item.category}","${item.notes}"`
+    )
     ].join('\n');
 
-    const blob = new Blob([csvContent], { type: 'text/csv' });
+    const blob = new Blob([csvContent], {type: 'text/csv' });
     const url = window.URL.createObjectURL(blob);
     const a = document.createElement('a');
     a.href = url;
@@ -460,53 +460,53 @@ const App = () => {
         const text = e.target.result;
         const lines = text.split('\n').filter(line => line.trim());
         const headers = lines[0].split(',').map(h => h.replace(/"/g, '').trim());
-        
-        const itemsToImport = [];
-        for (let i = 1; i < lines.length; i++) {
+
+    const itemsToImport = [];
+    for (let i = 1; i < lines.length; i++) {
           const values = lines[i].split(',').map(v => v.replace(/"/g, '').trim());
-          const itemData = {};
+    const itemData = { };
           
           headers.forEach((header, index) => {
-            itemData[header] = values[index] || '';
+      itemData[header] = values[index] || '';
           });
-          
-          if (itemData['Items to Pack']) {
-            itemsToImport.push(itemData);
+
+    if (itemData['Items to Pack']) {
+      itemsToImport.push(itemData);
           }
         }
         
         if (itemsToImport.length > 0) {
           const imported = await dbHelpers.bulkInsertPackingItems(itemsToImport);
           if (imported.length > 0) {
-            setPackingItems([...packingItems, ...imported]);
-            alert(`✅ Imported ${imported.length} items successfully!`);
+      setPackingItems([...packingItems, ...imported]);
+    alert(`✅ Imported ${imported.length} items successfully!`);
           }
         }
         
       } catch (error) {
-        console.error('CSV parsing error:', error);
-        alert('Error parsing CSV file');
+      console.error('CSV parsing error:', error);
+    alert('Error parsing CSV file');
       }
     };
-    
+
     reader.readAsText(file);
     event.target.value = '';
   };
 
-  if (!user) {
+    if (!user) {
     return <Auth onAuthSuccess={setUser} />;
   }
 
-  if (loading) {
+    if (loading) {
     return (
-      <div className="loading-container">
-        <div className="loading-spinner"></div>
-        <p>Loading your packing lists...</p>
-      </div>
+    <div className="loading-container">
+      <div className="loading-spinner"></div>
+      <p>Loading your packing lists...</p>
+    </div>
     );
   }
 
-  return (
+    return (
     <div className="app">
       {/* Header */}
       <div className="app-header">
@@ -518,8 +518,8 @@ const App = () => {
           <div className="header-right">
             <div className="user-info">
               <span className="user-email">{user.email}</span>
-              <button 
-                onClick={() => supabase.auth.signOut()} 
+              <button
+                onClick={() => supabase.auth.signOut()}
                 className="btn-logout"
               >
                 Sign Out
@@ -556,7 +556,7 @@ const App = () => {
         {/* Action Bar */}
         <div className="action-bar">
           <div className="action-bar-left">
-            <button 
+            <button
               onClick={() => setShowItemForm(true)}
               className="btn-primary"
             >
@@ -613,7 +613,7 @@ const App = () => {
                   </span>
                 )}
               </div>
-              
+
               <div className="bulk-action-buttons">
                 {selectedItems.size === 0 ? (
                   <button onClick={selectAllVisible} className="btn-bulk-select">
@@ -650,8 +650,8 @@ const App = () => {
             </div>
           ) : (
             filteredItems.map(item => (
-              <div 
-                key={item.id} 
+              <div
+                key={item.id}
                 className={`result-card ${selectedItems.has(item.id) ? 'selected' : ''} ${item.packed_flag === 'YES' ? 'packed' : ''}`}
                 onClick={() => handleEditItem(item)}
               >
@@ -696,7 +696,7 @@ const App = () => {
                 {item.notes && (
                   <p className="result-summary">{item.notes}</p>
                 )}
-                
+
                 <div className="result-footer">
                   <div className="action-buttons">
                     <button
@@ -745,7 +745,7 @@ const App = () => {
         />
       )}
     </div>
-  );
+    );
 };
 
-export default App;
+    export default App;
