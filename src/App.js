@@ -57,6 +57,27 @@ function App() {
     }
   };
 
+  // Delete individual item
+  const deleteItem = async (itemId, itemName) => {
+    if (!window.confirm(`Delete "${itemName}" permanently? This cannot be undone.`)) return;
+    
+    try {
+      const { error } = await supabase
+        .from('packing_items')
+        .delete()
+        .eq('id', itemId);
+      
+      if (error) throw error;
+      
+      // Remove from local state
+      setItems(items.filter(item => item.id !== itemId));
+      alert(`✅ Deleted "${itemName}"`);
+    } catch (error) {
+      console.error('Error deleting item:', error);
+      alert('Error deleting item from database');
+    }
+  };
+
   // Edit notes for existing items
   const startEditingNotes = (itemId, currentNotes) => {
     setEditingNotes(itemId);
@@ -564,6 +585,14 @@ function App() {
           cursor: pointer;
         }
 
+        .item-actions {
+          display: flex;
+          gap: 8px;
+          margin-left: 10px;
+          margin-top: 2px;
+          flex-shrink: 0;
+        }
+
         .remove-btn {
           background: #dc3545;
           color: white;
@@ -572,9 +601,21 @@ function App() {
           border-radius: 15px;
           font-size: 12px;
           cursor: pointer;
-          margin-left: 10px;
-          margin-top: 2px;
-          flex-shrink: 0;
+        }
+
+        .delete-btn {
+          background: #6c757d;
+          color: white;
+          border: none;
+          padding: 6px 10px;
+          border-radius: 15px;
+          font-size: 11px;
+          cursor: pointer;
+          transition: background 0.2s;
+        }
+
+        .delete-btn:hover {
+          background: #dc3545;
         }
 
         .stats {
@@ -673,6 +714,11 @@ function App() {
 
           .add-item-form .btn {
             grid-column: span 1;
+          }
+
+          .item-actions {
+            flex-direction: column;
+            gap: 4px;
           }
         }
       `}} />
@@ -839,6 +885,17 @@ function App() {
                                 }
                               </div>
                             )}
+                          </div>
+                          
+                          {/* Delete Button for Master List */}
+                          <div className="item-actions">
+                            <button
+                              className="delete-btn"
+                              onClick={() => deleteItem(item.id, item.items_to_pack)}
+                              title="Delete item permanently"
+                            >
+                              🗑️ Delete
+                            </button>
                           </div>
                         </div>
                       ))}
