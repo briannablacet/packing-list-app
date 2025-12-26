@@ -4,6 +4,8 @@ import { supabase } from './lib/supabase';
 function App() {
   const [items, setItems] = useState([]);
   const [loading, setLoading] = useState(true);
+  const [activeTab, setActiveTab] = useState('master');
+  const [searchTerm, setSearchTerm] = useState('');
 
   // Load data from database on startup
   useEffect(() => {
@@ -18,7 +20,7 @@ function App() {
         .select('*')
         .order('category', { ascending: true })
         .order('items_to_pack', { ascending: true });
-
+      
       if (error) throw error;
       setItems(data || []);
     } catch (error) {
@@ -26,6 +28,24 @@ function App() {
       alert('Error loading items from database');
     } finally {
       setLoading(false);
+    }
+  };
+
+  // Update item in database
+  const updateItemInDatabase = async (item) => {
+    try {
+      const { error } = await supabase
+        .from('packing_items')
+        .update({
+          bring_flag: item.bring_flag,
+          packed_flag: item.packed_flag
+        })
+        .eq('id', item.id);
+      
+      if (error) throw error;
+    } catch (error) {
+      console.error('Error updating item:', error);
+      alert('Error updating item in database');
     }
   };
 
@@ -44,7 +64,7 @@ function App() {
         .from('packing_items')
         .insert(formattedItems)
         .select();
-
+      
       if (error) throw error;
       return data;
     } catch (error) {
@@ -54,49 +74,54 @@ function App() {
     }
   };
 
+  // Toggle item for bringing on trip
+  const toggleBring = async (itemId) => {
+    const updatedItems = items.map(item => {
+      if (item.id === itemId) {
+        const updatedItem = { 
+          ...item, 
+          bring_flag: item.bring_flag === 'YES' ? 'NO' : 'YES',
+          packed_flag: item.bring_flag === 'YES' ? 'NO' : item.packed_flag // Reset packed if removing from trip
+        };
+        updateItemInDatabase(updatedItem);
+        return updatedItem;
+      }
+      return item;
+    });
+    setItems(updatedItems);
+  };
+
+  // Toggle packed status
+  const togglePacked = async (itemId) => {
+    const updatedItems = items.map(item => {
+      if (item.id === itemId) {
+        const updatedItem = { 
+          ...item, 
+          packed_flag: item.packed_flag === 'YES' ? 'NO' : 'YES'
+        };
+        updateItemInDatabase(updatedItem);
+        return updatedItem;
+      }
+      return item;
+    });
+    setItems(updatedItems);
+  };
+
   // Load sample data to DATABASE
   const loadSampleDataToDatabase = async () => {
     const sampleItems = [
-      {
-        bring_flag: 'YES',
-        packed_flag: 'NO',
-        items_to_pack: 'Airpods',
-        category: 'Electronics',
-        notes: 'Bring two pairs'
-      },
-      {
-        bring_flag: 'YES',
-        packed_flag: 'YES',
-        items_to_pack: 'T-shirts',
-        category: 'Clothing',
-        notes: '3-4 pieces'
-      },
-      {
-        bring_flag: 'NO',
-        packed_flag: 'NO',
-        items_to_pack: 'Laptop',
-        category: 'Electronics',
-        notes: 'Work laptop'
-      },
-      {
-        bring_flag: 'YES',
-        packed_flag: 'NO',
-        items_to_pack: 'Toothbrush',
-        category: 'Toiletries',
-        notes: 'Electric'
-      },
-      {
-        bring_flag: 'YES',
-        packed_flag: 'YES',
-        items_to_pack: 'Passport',
-        category: 'Documents',
-        notes: 'Check expiry date'
-      }
+      { bring_flag: 'NO', packed_flag: 'NO', items_to_pack: 'Airpods', category: 'Electronics', notes: 'Bring two pairs' },
+      { bring_flag: 'NO', packed_flag: 'NO', items_to_pack: 'T-shirts', category: 'Clothing', notes: '3-4 pieces' },
+      { bring_flag: 'NO', packed_flag: 'NO', items_to_pack: 'Laptop', category: 'Electronics', notes: 'Work laptop' },
+      { bring_flag: 'NO', packed_flag: 'NO', items_to_pack: 'Toothbrush', category: 'Toiletries', notes: 'Electric' },
+      { bring_flag: 'NO', packed_flag: 'NO', items_to_pack: 'Passport', category: 'Documents', notes: 'Check expiry' },
+      { bring_flag: 'NO', packed_flag: 'NO', items_to_pack: 'Jeans', category: 'Clothing', notes: 'Comfortable pair' },
+      { bring_flag: 'NO', packed_flag: 'NO', items_to_pack: 'Phone charger', category: 'Electronics', notes: 'USB-C' }
     ];
 
     const savedItems = await saveItemsToDatabase(sampleItems);
     if (savedItems.length > 0) {
-      await loadItemsFromDatabase(); // Refresh from database
+      await loadItemsFromDatabase();
       alert(`✅ Loaded ${savedItems.length} sample items to database!`);
     }
   };
@@ -111,40 +136,36 @@ function App() {
       try {
         const text = e.target.result;
         const lines = text.split('\n').filter(line => line.trim());
-
-        // Skip header line, process data lines
+        
         const importedItems = [];
         for (let i = 1; i < lines.length; i++) {
           const values = lines[i].split(',').map(v => v.replace(/"/g, '').trim());
-
-          // Format: Bring?,Packed?,Items to Pack,Category,Notes
-          if (values[2]) { // Check if "Items to Pack" exists
+          
+          if (values[2]) {
             importedItems.push({
-              bring_flag: values[0] || 'NO',     // Bring?
-              packed_flag: values[1] || 'NO',    // Packed?
-              items_to_pack: values[2] || '',    // Items to Pack
-              category: values[3] || 'Misc',     // Category
-              notes: values[4] || ''             // Notes
+              bring_flag: values[0] || 'NO',
+              packed_flag: values[1] || 'NO',
+              items_to_pack: values[2] || '',
+              category: values[3] || 'Misc',
+              notes: values[4] || ''
             });
           }
         }
-
+        
         if (importedItems.length > 0) {
-          // Save to database
           const savedItems = await saveItemsToDatabase(importedItems);
           if (savedItems.length > 0) {
-            // Refresh from database
             await loadItemsFromDatabase();
             alert(`✅ Imported ${savedItems.length} items to database!`);
           }
         }
-
+        
       } catch (error) {
         console.error('Error:', error);
         alert('Error reading CSV file');
       }
     };
-
+    
     reader.readAsText(file);
     event.target.value = '';
   };
@@ -153,7 +174,7 @@ function App() {
   const exportToCSV = () => {
     const csvContent = [
       'Bring?,Packed?,Items to Pack,Category,Notes',
-      ...items.map(item =>
+      ...items.map(item => 
         `"${item.bring_flag}","${item.packed_flag}","${item.items_to_pack}","${item.category}","${item.notes}"`
       )
     ].join('\n');
@@ -167,16 +188,16 @@ function App() {
     window.URL.revokeObjectURL(url);
   };
 
-  // Clear all data from database
+  // Clear all data
   const clearAllData = async () => {
     if (!window.confirm('Delete all items from database? This cannot be undone.')) return;
-
+    
     try {
       const { error } = await supabase
         .from('packing_items')
         .delete()
-        .neq('id', 0); // Delete all rows
-
+        .neq('id', 0);
+      
       if (error) throw error;
       setItems([]);
       alert('✅ All items deleted from database');
@@ -185,6 +206,36 @@ function App() {
       alert('Error deleting from database');
     }
   };
+
+  // Filter items
+  const filteredItems = items.filter(item => 
+    item.items_to_pack.toLowerCase().includes(searchTerm.toLowerCase()) ||
+    item.category.toLowerCase().includes(searchTerm.toLowerCase()) ||
+    item.notes.toLowerCase().includes(searchTerm.toLowerCase())
+  );
+
+  // Trip items (selected for trip)
+  const tripItems = items.filter(item => item.bring_flag === 'YES');
+  const packedItems = tripItems.filter(item => item.packed_flag === 'YES');
+
+  // Group items by category
+  const groupedItems = filteredItems.reduce((groups, item) => {
+    const category = item.category || 'Other';
+    if (!groups[category]) {
+      groups[category] = [];
+    }
+    groups[category].push(item);
+    return groups;
+  }, {});
+
+  const groupedTripItems = tripItems.reduce((groups, item) => {
+    const category = item.category || 'Other';
+    if (!groups[category]) {
+      groups[category] = [];
+    }
+    groups[category].push(item);
+    return groups;
+  }, {});
 
   if (loading) {
     return (
@@ -195,230 +246,322 @@ function App() {
   }
 
   return (
-    <div style={{ padding: '20px', fontFamily: 'Arial, sans-serif', backgroundColor: '#f8f9fa', minHeight: '100vh' }}>
+    <div style={{ fontFamily: 'Arial, sans-serif', backgroundColor: '#f5f5f5', minHeight: '100vh' }}>
       {/* Header */}
       <div style={{
-        marginBottom: '20px',
-        padding: '20px',
         background: 'linear-gradient(135deg, #667eea 0%, #764ba2 100%)',
         color: 'white',
-        borderRadius: '12px',
-        boxShadow: '0 4px 12px rgba(0,0,0,0.1)'
+        padding: '20px',
+        boxShadow: '0 2px 10px rgba(0,0,0,0.1)'
       }}>
-        <h1 style={{ margin: 0, fontSize: '2rem' }}>🎒 PackTrack</h1>
-        <p style={{ margin: '5px 0 0 0', opacity: 0.9, fontSize: '14px' }}>
-          Database Storage • Format: Bring?,Packed?,Items to Pack,Category,Notes
-        </p>
-      </div>
-
-      {/* Actions */}
-      <div style={{ marginBottom: '20px', display: 'flex', gap: '10px', flexWrap: 'wrap' }}>
-        <label style={{
-          backgroundColor: '#28a745',
-          color: 'white',
-          padding: '12px 20px',
-          borderRadius: '8px',
-          cursor: 'pointer',
-          border: 'none',
-          fontSize: '14px',
-          fontWeight: '500'
-        }}>
-          📤 Import CSV
-          <input
-            type="file"
-            accept=".csv"
-            onChange={handleFileUpload}
-            style={{ display: 'none' }}
-          />
-        </label>
-
-        <button
-          onClick={exportToCSV}
-          disabled={items.length === 0}
-          style={{
-            backgroundColor: items.length === 0 ? '#ccc' : '#17a2b8',
-            color: 'white',
-            padding: '12px 20px',
-            border: 'none',
-            borderRadius: '8px',
-            cursor: items.length === 0 ? 'not-allowed' : 'pointer',
-            fontSize: '14px',
-            fontWeight: '500'
-          }}
-        >
-          📥 Export CSV ({items.length} items)
-        </button>
-
-        <button
-          onClick={loadSampleDataToDatabase}
-          style={{
-            backgroundColor: '#ffc107',
-            color: 'black',
-            padding: '12px 20px',
-            border: 'none',
-            borderRadius: '8px',
-            cursor: 'pointer',
-            fontSize: '14px',
-            fontWeight: '500'
-          }}
-        >
-          📦 Load Sample Data
-        </button>
-
-        <button
-          onClick={loadItemsFromDatabase}
-          style={{
-            backgroundColor: '#6f42c1',
-            color: 'white',
-            padding: '12px 20px',
-            border: 'none',
-            borderRadius: '8px',
-            cursor: 'pointer',
-            fontSize: '14px',
-            fontWeight: '500'
-          }}
-        >
-          🔄 Refresh
-        </button>
-
-        <button
-          onClick={clearAllData}
-          disabled={items.length === 0}
-          style={{
-            backgroundColor: items.length === 0 ? '#ccc' : '#dc3545',
-            color: 'white',
-            padding: '12px 20px',
-            border: 'none',
-            borderRadius: '8px',
-            cursor: items.length === 0 ? 'not-allowed' : 'pointer',
-            fontSize: '14px',
-            fontWeight: '500'
-          }}
-        >
-          🗑️ Clear All Database
-        </button>
-      </div>
-
-      {/* Stats */}
-      {items.length > 0 && (
-        <div style={{
-          display: 'grid',
-          gridTemplateColumns: 'repeat(auto-fit, minmax(120px, 1fr))',
-          gap: '15px',
-          marginBottom: '25px',
-          padding: '20px',
-          background: 'white',
-          borderRadius: '12px',
-          boxShadow: '0 2px 8px rgba(0,0,0,0.1)'
-        }}>
-          <div style={{ textAlign: 'center' }}>
-            <div style={{ fontSize: '24px', fontWeight: 'bold', color: '#667eea' }}>{items.length}</div>
-            <div style={{ fontSize: '12px', color: '#666', textTransform: 'uppercase' }}>Total</div>
-          </div>
-          <div style={{ textAlign: 'center' }}>
-            <div style={{ fontSize: '24px', fontWeight: 'bold', color: '#28a745' }}>{items.filter(i => i.bring_flag === 'YES').length}</div>
-            <div style={{ fontSize: '12px', color: '#666', textTransform: 'uppercase' }}>To Bring</div>
-          </div>
-          <div style={{ textAlign: 'center' }}>
-            <div style={{ fontSize: '24px', fontWeight: 'bold', color: '#ffc107' }}>{items.filter(i => i.packed_flag === 'YES').length}</div>
-            <div style={{ fontSize: '12px', color: '#666', textTransform: 'uppercase' }}>Packed</div>
-          </div>
-          <div style={{ textAlign: 'center' }}>
-            <div style={{ fontSize: '24px', fontWeight: 'bold', color: '#17a2b8' }}>
-              {items.filter(i => i.bring_flag === 'YES').length > 0
-                ? Math.round((items.filter(i => i.packed_flag === 'YES').length / items.filter(i => i.bring_flag === 'YES').length) * 100)
-                : 0}%
-            </div>
-            <div style={{ fontSize: '12px', color: '#666', textTransform: 'uppercase' }}>Complete</div>
-          </div>
+        <div style={{ maxWidth: '1200px', margin: '0 auto' }}>
+          <h1 style={{ margin: 0, fontSize: '2rem' }}>🎒 PackTrack</h1>
+          <p style={{ margin: '5px 0 0 0', opacity: 0.9 }}>Smart Packing Lists</p>
         </div>
-      )}
+      </div>
 
-      {/* Items List */}
-      <div>
-        <h3 style={{ marginBottom: '15px', color: '#333' }}>
-          Items from Database ({items.length})
-        </h3>
-
-        {items.length === 0 ? (
-          <div style={{
-            textAlign: 'center',
-            padding: '60px 20px',
-            color: '#666',
-            background: 'white',
-            borderRadius: '12px',
-            boxShadow: '0 2px 8px rgba(0,0,0,0.1)'
+      <div style={{ maxWidth: '1200px', margin: '0 auto', padding: '20px' }}>
+        {/* Action Bar */}
+        <div style={{ marginBottom: '20px', display: 'flex', gap: '10px', flexWrap: 'wrap' }}>
+          <label style={{ 
+            backgroundColor: '#28a745', 
+            color: 'white', 
+            padding: '10px 20px', 
+            borderRadius: '6px',
+            cursor: 'pointer',
+            fontSize: '14px'
           }}>
-            <p style={{ fontSize: '18px', marginBottom: '10px' }}>No items in database yet</p>
-            <p>Click "📦 Load Sample Data" to see the interface, or import your CSV file!</p>
-          </div>
-        ) : (
-          <div style={{ display: 'grid', gap: '12px' }}>
-            {items.map(item => (
-              <div key={item.id} style={{
-                background: 'white',
-                border: '1px solid #e9ecef',
-                padding: '20px',
-                borderRadius: '12px',
-                boxShadow: '0 2px 8px rgba(0,0,0,0.1)',
-                transition: 'transform 0.2s',
-                borderLeft: `4px solid ${item.packed_flag === 'YES' ? '#28a745' : item.bring_flag === 'YES' ? '#ffc107' : '#dc3545'}`
-              }}>
-                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: '10px' }}>
-                  <div>
-                    <h4 style={{ margin: 0, fontSize: '18px', color: '#333' }}>{item.items_to_pack}</h4>
-                    <span style={{
-                      fontSize: '14px',
-                      color: '#666',
-                      backgroundColor: '#f8f9fa',
-                      padding: '4px 8px',
-                      borderRadius: '4px',
-                      marginTop: '5px',
-                      display: 'inline-block'
+            📤 Import CSV
+            <input
+              type="file"
+              accept=".csv"
+              onChange={handleFileUpload}
+              style={{ display: 'none' }}
+            />
+          </label>
+          
+          <button 
+            onClick={exportToCSV}
+            style={{
+              backgroundColor: '#17a2b8',
+              color: 'white',
+              padding: '10px 20px',
+              border: 'none',
+              borderRadius: '6px',
+              cursor: 'pointer',
+              fontSize: '14px'
+            }}
+          >
+            📥 Export CSV
+          </button>
+
+          <button 
+            onClick={loadSampleDataToDatabase}
+            style={{
+              backgroundColor: '#ffc107',
+              color: 'black',
+              padding: '10px 20px',
+              border: 'none',
+              borderRadius: '6px',
+              cursor: 'pointer',
+              fontSize: '14px'
+            }}
+          >
+            📦 Load Sample
+          </button>
+
+          <button 
+            onClick={clearAllData}
+            style={{
+              backgroundColor: '#dc3545',
+              color: 'white',
+              padding: '10px 20px',
+              border: 'none',
+              borderRadius: '6px',
+              cursor: 'pointer',
+              fontSize: '14px'
+            }}
+          >
+            🗑️ Clear All
+          </button>
+        </div>
+
+        {/* Tab Navigation */}
+        <div style={{ display: 'flex', background: '#f8f9fa', borderRadius: '6px 6px 0 0', overflow: 'hidden' }}>
+          <button
+            onClick={() => setActiveTab('master')}
+            style={{
+              flex: 1,
+              padding: '15px',
+              border: 'none',
+              background: activeTab === 'master' ? 'white' : 'transparent',
+              borderBottom: activeTab === 'master' ? '3px solid #667eea' : 'none',
+              color: activeTab === 'master' ? '#667eea' : '#666',
+              fontWeight: activeTab === 'master' ? 'bold' : 'normal',
+              cursor: 'pointer',
+              fontSize: '16px'
+            }}
+          >
+            📋 Master List ({items.length})
+          </button>
+          <button
+            onClick={() => setActiveTab('trip')}
+            style={{
+              flex: 1,
+              padding: '15px',
+              border: 'none',
+              background: activeTab === 'trip' ? 'white' : 'transparent',
+              borderBottom: activeTab === 'trip' ? '3px solid #667eea' : 'none',
+              color: activeTab === 'trip' ? '#667eea' : '#666',
+              fontWeight: activeTab === 'trip' ? 'bold' : 'normal',
+              cursor: 'pointer',
+              fontSize: '16px'
+            }}
+          >
+            ✈️ Trip List ({tripItems.length})
+          </button>
+        </div>
+
+        {/* Tab Content */}
+        <div style={{ background: 'white', borderRadius: '0 0 6px 6px', minHeight: '400px' }}>
+          {activeTab === 'master' && (
+            <div style={{ padding: '20px' }}>
+              {/* Search */}
+              <input
+                type="text"
+                placeholder="🔍 Search items..."
+                value={searchTerm}
+                onChange={(e) => setSearchTerm(e.target.value)}
+                style={{
+                  width: '100%',
+                  padding: '12px',
+                  marginBottom: '20px',
+                  border: '2px solid #e9ecef',
+                  borderRadius: '6px',
+                  fontSize: '16px'
+                }}
+              />
+
+              {items.length === 0 ? (
+                <div style={{ textAlign: 'center', padding: '40px', color: '#666' }}>
+                  <p>No items yet. Import CSV or load sample data!</p>
+                </div>
+              ) : (
+                Object.keys(groupedItems).sort().map(category => (
+                  <div key={category} style={{ marginBottom: '25px' }}>
+                    <div style={{
+                      background: '#f8f9fa',
+                      padding: '12px 15px',
+                      borderRadius: '6px',
+                      fontWeight: '600',
+                      color: '#495057',
+                      marginBottom: '10px',
+                      display: 'flex',
+                      justifyContent: 'space-between'
                     }}>
-                      {item.category}
-                    </span>
+                      {category}
+                      <span style={{
+                        background: '#6c757d',
+                        color: 'white',
+                        padding: '4px 8px',
+                        borderRadius: '12px',
+                        fontSize: '12px'
+                      }}>
+                        {groupedItems[category].filter(item => item.bring_flag === 'YES').length}/{groupedItems[category].length}
+                      </span>
+                    </div>
+                    
+                    {groupedItems[category].map(item => (
+                      <div key={item.id} style={{
+                        display: 'flex',
+                        alignItems: 'center',
+                        padding: '15px',
+                        marginBottom: '8px',
+                        background: '#f8f9fa',
+                        borderRadius: '6px',
+                        transition: 'all 0.3s'
+                      }}>
+                        <input
+                          type="checkbox"
+                          checked={item.bring_flag === 'YES'}
+                          onChange={() => toggleBring(item.id)}
+                          style={{ width: '18px', height: '18px', marginRight: '15px', cursor: 'pointer' }}
+                        />
+                        <div style={{ flex: 1 }}>
+                          <div style={{ fontWeight: '500', color: '#212529', marginBottom: '4px' }}>
+                            {item.items_to_pack}
+                          </div>
+                          {item.notes && (
+                            <div style={{ fontSize: '12px', color: '#6c757d', fontStyle: 'italic' }}>
+                              {item.notes}
+                            </div>
+                          )}
+                        </div>
+                      </div>
+                    ))}
                   </div>
-                  <div style={{ display: 'flex', gap: '8px', flexWrap: 'wrap' }}>
-                    <span style={{
-                      background: item.bring_flag === 'YES' ? '#28a745' : '#dc3545',
-                      color: 'white',
-                      padding: '6px 12px',
-                      borderRadius: '20px',
-                      fontSize: '12px',
-                      fontWeight: '500'
-                    }}>
-                      Bring: {item.bring_flag}
-                    </span>
-                    <span style={{
-                      background: item.packed_flag === 'YES' ? '#28a745' : '#ffc107',
-                      color: item.packed_flag === 'YES' ? 'white' : 'black',
-                      padding: '6px 12px',
-                      borderRadius: '20px',
-                      fontSize: '12px',
-                      fontWeight: '500'
-                    }}>
-                      Packed: {item.packed_flag}
-                    </span>
+                ))
+              )}
+            </div>
+          )}
+
+          {activeTab === 'trip' && (
+            <div style={{ padding: '20px' }}>
+              {/* Trip Stats */}
+              {tripItems.length > 0 && (
+                <div style={{
+                  background: 'linear-gradient(135deg, #667eea 0%, #764ba2 100%)',
+                  color: 'white',
+                  padding: '20px',
+                  borderRadius: '10px',
+                  marginBottom: '20px',
+                  textAlign: 'center'
+                }}>
+                  <h3 style={{ margin: '0 0 10px 0' }}>📊 Trip Progress</h3>
+                  <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr', gap: '20px', marginTop: '15px' }}>
+                    <div>
+                      <div style={{ fontSize: '24px', fontWeight: 'bold' }}>{tripItems.length}</div>
+                      <div style={{ fontSize: '12px', opacity: 0.8 }}>TO PACK</div>
+                    </div>
+                    <div>
+                      <div style={{ fontSize: '24px', fontWeight: 'bold' }}>{packedItems.length}</div>
+                      <div style={{ fontSize: '12px', opacity: 0.8 }}>PACKED</div>
+                    </div>
+                    <div>
+                      <div style={{ fontSize: '24px', fontWeight: 'bold' }}>
+                        {tripItems.length > 0 ? Math.round((packedItems.length / tripItems.length) * 100) : 0}%
+                      </div>
+                      <div style={{ fontSize: '12px', opacity: 0.8 }}>COMPLETE</div>
+                    </div>
                   </div>
                 </div>
-                {item.notes && (
-                  <div style={{
-                    marginTop: '12px',
-                    fontStyle: 'italic',
-                    color: '#666',
-                    fontSize: '14px',
-                    backgroundColor: '#f8f9fa',
-                    padding: '8px 12px',
-                    borderRadius: '6px'
-                  }}>
-                    📝 {item.notes}
+              )}
+
+              {tripItems.length === 0 ? (
+                <div style={{ textAlign: 'center', padding: '40px', color: '#666' }}>
+                  <div style={{ fontSize: '48px', marginBottom: '15px' }}>✈️</div>
+                  <p>No items selected for this trip</p>
+                  <p>Go to Master List to select items</p>
+                </div>
+              ) : (
+                Object.keys(groupedTripItems).sort().map(category => (
+                  <div key={category} style={{ marginBottom: '25px' }}>
+                    <div style={{
+                      background: '#f8f9fa',
+                      padding: '12px 15px',
+                      borderRadius: '6px',
+                      fontWeight: '600',
+                      color: '#495057',
+                      marginBottom: '10px',
+                      display: 'flex',
+                      justifyContent: 'space-between'
+                    }}>
+                      {category}
+                      <span style={{
+                        background: '#6c757d',
+                        color: 'white',
+                        padding: '4px 8px',
+                        borderRadius: '12px',
+                        fontSize: '12px'
+                      }}>
+                        {groupedTripItems[category].filter(item => item.packed_flag === 'YES').length}/{groupedTripItems[category].length} packed
+                      </span>
+                    </div>
+                    
+                    {groupedTripItems[category].map(item => (
+                      <div key={item.id} style={{
+                        display: 'flex',
+                        alignItems: 'center',
+                        padding: '15px',
+                        marginBottom: '8px',
+                        background: item.packed_flag === 'YES' ? '#d4edda' : '#f8f9fa',
+                        borderRadius: '6px',
+                        opacity: item.packed_flag === 'YES' ? 0.8 : 1,
+                        transition: 'all 0.3s'
+                      }}>
+                        <input
+                          type="checkbox"
+                          checked={item.packed_flag === 'YES'}
+                          onChange={() => togglePacked(item.id)}
+                          style={{ width: '18px', height: '18px', marginRight: '15px', cursor: 'pointer' }}
+                        />
+                        <div style={{ flex: 1 }}>
+                          <div style={{ 
+                            fontWeight: '500', 
+                            color: '#212529', 
+                            marginBottom: '4px',
+                            textDecoration: item.packed_flag === 'YES' ? 'line-through' : 'none'
+                          }}>
+                            {item.items_to_pack}
+                          </div>
+                          {item.notes && (
+                            <div style={{ fontSize: '12px', color: '#6c757d', fontStyle: 'italic' }}>
+                              {item.notes}
+                            </div>
+                          )}
+                        </div>
+                        <button
+                          onClick={() => toggleBring(item.id)}
+                          style={{
+                            background: '#dc3545',
+                            color: 'white',
+                            border: 'none',
+                            padding: '6px 12px',
+                            borderRadius: '15px',
+                            fontSize: '12px',
+                            cursor: 'pointer'
+                          }}
+                        >
+                          Remove
+                        </button>
+                      </div>
+                    ))}
                   </div>
-                )}
-              </div>
-            ))}
-          </div>
-        )}
+                ))
+              )}
+            </div>
+          )}
+        </div>
       </div>
     </div>
   );
