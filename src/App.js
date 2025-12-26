@@ -1,18 +1,63 @@
 import React, { useState, useEffect } from 'react';
+import { supabase } from './lib/supabase';
 
 function App() {
   const [items, setItems] = useState([]);
-  const [loading, setLoading] = useState(false);
+  const [loading, setLoading] = useState(true);
 
-  // Load sample data on startup to show the UI
+  // Load data from database on startup
   useEffect(() => {
-    loadSampleData();
+    loadItemsFromDatabase();
   }, []);
 
-  const loadSampleData = () => {
+  // Load items from Supabase
+  const loadItemsFromDatabase = async () => {
+    try {
+      const { data, error } = await supabase
+        .from('packing_items')
+        .select('*')
+        .order('category', { ascending: true })
+        .order('items_to_pack', { ascending: true });
+      
+      if (error) throw error;
+      setItems(data || []);
+    } catch (error) {
+      console.error('Error loading items:', error);
+      alert('Error loading items from database');
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  // Save items to database
+  const saveItemsToDatabase = async (itemsToSave) => {
+    try {
+      const formattedItems = itemsToSave.map(item => ({
+        bring_flag: item.bring_flag,
+        packed_flag: item.packed_flag,
+        items_to_pack: item.items_to_pack,
+        category: item.category,
+        notes: item.notes
+      }));
+
+      const { data, error } = await supabase
+        .from('packing_items')
+        .insert(formattedItems)
+        .select();
+      
+      if (error) throw error;
+      return data;
+    } catch (error) {
+      console.error('Error saving to database:', error);
+      alert('Error saving to database');
+      return [];
+    }
+  };
+
+  // Load sample data to DATABASE
+  const loadSampleDataToDatabase = async () => {
     const sampleItems = [
       {
-        id: 1,
         bring_flag: 'YES',
         packed_flag: 'NO',
         items_to_pack: 'Airpods',
@@ -20,7 +65,6 @@ function App() {
         notes: 'Bring two pairs'
       },
       {
-        id: 2,
         bring_flag: 'YES',
         packed_flag: 'YES',
         items_to_pack: 'T-shirts',
@@ -28,7 +72,6 @@ function App() {
         notes: '3-4 pieces'
       },
       {
-        id: 3,
         bring_flag: 'NO',
         packed_flag: 'NO',
         items_to_pack: 'Laptop',
@@ -36,24 +79,35 @@ function App() {
         notes: 'Work laptop'
       },
       {
-        id: 4,
         bring_flag: 'YES',
         packed_flag: 'NO',
         items_to_pack: 'Toothbrush',
         category: 'Toiletries',
         notes: 'Electric'
+      },
+      {
+        bring_flag: 'YES',
+        packed_flag: 'YES',
+        items_to_pack: 'Passport',
+        category: 'Documents',
+        notes: 'Check expiry date'
       }
     ];
-    setItems(sampleItems);
+
+    const savedItems = await saveItemsToDatabase(sampleItems);
+    if (savedItems.length > 0) {
+      await loadItemsFromDatabase(); // Refresh from database
+      alert(`✅ Loaded ${savedItems.length} sample items to database!`);
+    }
   };
 
   // Handle CSV file upload
-  const handleFileUpload = (event) => {
+  const handleFileUpload = async (event) => {
     const file = event.target.files[0];
     if (!file) return;
 
     const reader = new FileReader();
-    reader.onload = (e) => {
+    reader.onload = async (e) => {
       try {
         const text = e.target.result;
         const lines = text.split('\n').filter(line => line.trim());
@@ -66,7 +120,6 @@ function App() {
           // Format: Bring?,Packed?,Items to Pack,Category,Notes
           if (values[2]) { // Check if "Items to Pack" exists
             importedItems.push({
-              id: Date.now() + i,
               bring_flag: values[0] || 'NO',     // Bring?
               packed_flag: values[1] || 'NO',    // Packed?
               items_to_pack: values[2] || '',    // Items to Pack
@@ -77,9 +130,13 @@ function App() {
         }
         
         if (importedItems.length > 0) {
-          // Replace current items with imported ones
-          setItems(importedItems);
-          alert(`✅ Imported ${importedItems.length} items!`);
+          // Save to database
+          const savedItems = await saveItemsToDatabase(importedItems);
+          if (savedItems.length > 0) {
+            // Refresh from database
+            await loadItemsFromDatabase();
+            alert(`✅ Imported ${savedItems.length} items to database!`);
+          }
         }
         
       } catch (error) {
@@ -110,23 +167,29 @@ function App() {
     window.URL.revokeObjectURL(url);
   };
 
-  // Clear all data
-  const clearAllData = () => {
-    if (!confirm('Clear all items? This will reset to empty.')) return;
-    setItems([]);
-    alert('✅ All items cleared');
-  };
-
-  // Reset to sample data
-  const resetSampleData = () => {
-    loadSampleData();
-    alert('✅ Sample data loaded');
+  // Clear all data from database
+  const clearAllData = async () => {
+    if (!confirm('Delete all items from database? This cannot be undone.')) return;
+    
+    try {
+      const { error } = await supabase
+        .from('packing_items')
+        .delete()
+        .neq('id', 0); // Delete all rows
+      
+      if (error) throw error;
+      setItems([]);
+      alert('✅ All items deleted from database');
+    } catch (error) {
+      console.error('Error:', error);
+      alert('Error deleting from database');
+    }
   };
 
   if (loading) {
     return (
       <div style={{ padding: '20px', textAlign: 'center' }}>
-        <p>Loading...</p>
+        <p>Loading from database...</p>
       </div>
     );
   }
@@ -144,7 +207,7 @@ function App() {
       }}>
         <h1 style={{ margin: 0, fontSize: '2rem' }}>🎒 PackTrack</h1>
         <p style={{ margin: '5px 0 0 0', opacity: 0.9, fontSize: '14px' }}>
-          CSV Format: Bring?,Packed?,Items to Pack,Category,Notes • Currently showing sample data
+          Database Storage • Format: Bring?,Packed?,Items to Pack,Category,Notes
         </p>
       </div>
       
@@ -187,7 +250,7 @@ function App() {
         </button>
 
         <button 
-          onClick={resetSampleData}
+          onClick={loadSampleDataToDatabase}
           style={{
             backgroundColor: '#ffc107',
             color: 'black',
@@ -199,7 +262,23 @@ function App() {
             fontWeight: '500'
           }}
         >
-          🔄 Reset Sample Data
+          📦 Load Sample Data
+        </button>
+
+        <button 
+          onClick={loadItemsFromDatabase}
+          style={{
+            backgroundColor: '#6f42c1',
+            color: 'white',
+            padding: '12px 20px',
+            border: 'none',
+            borderRadius: '8px',
+            cursor: 'pointer',
+            fontSize: '14px',
+            fontWeight: '500'
+          }}
+        >
+          🔄 Refresh
         </button>
 
         <button 
@@ -216,7 +295,7 @@ function App() {
             fontWeight: '500'
           }}
         >
-          🗑️ Clear All
+          🗑️ Clear All Database
         </button>
       </div>
 
@@ -258,7 +337,7 @@ function App() {
       {/* Items List */}
       <div>
         <h3 style={{ marginBottom: '15px', color: '#333' }}>
-          Your Items ({items.length})
+          Items from Database ({items.length})
         </h3>
         
         {items.length === 0 ? (
@@ -270,8 +349,8 @@ function App() {
             borderRadius: '12px',
             boxShadow: '0 2px 8px rgba(0,0,0,0.1)'
           }}>
-            <p style={{ fontSize: '18px', marginBottom: '10px' }}>No items yet</p>
-            <p>Import your CSV file or load sample data to get started!</p>
+            <p style={{ fontSize: '18px', marginBottom: '10px' }}>No items in database yet</p>
+            <p>Click "📦 Load Sample Data" to see the interface, or import your CSV file!</p>
           </div>
         ) : (
           <div style={{ display: 'grid', gap: '12px' }}>
