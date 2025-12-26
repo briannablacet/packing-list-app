@@ -12,7 +12,6 @@ function App() {
     loadItemsFromDatabase();
   }, []);
 
-  // Load items from Supabase
   const loadItemsFromDatabase = async () => {
     try {
       const { data, error } = await supabase
@@ -31,7 +30,6 @@ function App() {
     }
   };
 
-  // Update item in database
   const updateItemInDatabase = async (item) => {
     try {
       const { error } = await supabase
@@ -49,12 +47,11 @@ function App() {
     }
   };
 
-  // Save items to database
   const saveItemsToDatabase = async (itemsToSave) => {
     try {
       const formattedItems = itemsToSave.map(item => ({
-        bring_flag: item.bring_flag,
-        packed_flag: item.packed_flag,
+        bring_flag: item.bring_flag || 'NO',
+        packed_flag: item.packed_flag || 'NO',
         items_to_pack: item.items_to_pack,
         category: item.category,
         notes: item.notes
@@ -74,14 +71,13 @@ function App() {
     }
   };
 
-  // Toggle item for bringing on trip
   const toggleBring = async (itemId) => {
     const updatedItems = items.map(item => {
       if (item.id === itemId) {
         const updatedItem = { 
           ...item, 
           bring_flag: item.bring_flag === 'YES' ? 'NO' : 'YES',
-          packed_flag: item.bring_flag === 'YES' ? 'NO' : item.packed_flag // Reset packed if removing from trip
+          packed_flag: item.bring_flag === 'YES' ? 'NO' : item.packed_flag
         };
         updateItemInDatabase(updatedItem);
         return updatedItem;
@@ -91,7 +87,6 @@ function App() {
     setItems(updatedItems);
   };
 
-  // Toggle packed status
   const togglePacked = async (itemId) => {
     const updatedItems = items.map(item => {
       if (item.id === itemId) {
@@ -107,16 +102,18 @@ function App() {
     setItems(updatedItems);
   };
 
-  // Load sample data to DATABASE
   const loadSampleDataToDatabase = async () => {
     const sampleItems = [
-      { bring_flag: 'NO', packed_flag: 'NO', items_to_pack: 'Airpods', category: 'Electronics', notes: 'Bring two pairs' },
-      { bring_flag: 'NO', packed_flag: 'NO', items_to_pack: 'T-shirts', category: 'Clothing', notes: '3-4 pieces' },
       { bring_flag: 'NO', packed_flag: 'NO', items_to_pack: 'Laptop', category: 'Electronics', notes: 'Work laptop' },
+      { bring_flag: 'NO', packed_flag: 'NO', items_to_pack: 'Charger', category: 'Electronics', notes: 'USB-C' },
+      { bring_flag: 'NO', packed_flag: 'NO', items_to_pack: 'T-shirts', category: 'Clothes', notes: '3-4 pieces' },
+      { bring_flag: 'NO', packed_flag: 'NO', items_to_pack: 'Jeans', category: 'Clothes', notes: 'Comfortable pair' },
       { bring_flag: 'NO', packed_flag: 'NO', items_to_pack: 'Toothbrush', category: 'Toiletries', notes: 'Electric' },
+      { bring_flag: 'NO', packed_flag: 'NO', items_to_pack: 'Toothpaste', category: 'Toiletries', notes: 'Travel size' },
       { bring_flag: 'NO', packed_flag: 'NO', items_to_pack: 'Passport', category: 'Documents', notes: 'Check expiry' },
-      { bring_flag: 'NO', packed_flag: 'NO', items_to_pack: 'Jeans', category: 'Clothing', notes: 'Comfortable pair' },
-      { bring_flag: 'NO', packed_flag: 'NO', items_to_pack: 'Phone charger', category: 'Electronics', notes: 'USB-C' }
+      { bring_flag: 'NO', packed_flag: 'NO', items_to_pack: 'Tickets', category: 'Documents', notes: 'Print backup' },
+      { bring_flag: 'NO', packed_flag: 'NO', items_to_pack: 'Sunglasses', category: 'Accessories', notes: 'UV protection' },
+      { bring_flag: 'NO', packed_flag: 'NO', items_to_pack: 'Camera', category: 'Electronics', notes: "Don't forget SD card" }
     ];
 
     const savedItems = await saveItemsToDatabase(sampleItems);
@@ -126,7 +123,6 @@ function App() {
     }
   };
 
-  // Handle CSV file upload
   const handleFileUpload = async (event) => {
     const file = event.target.files[0];
     if (!file) return;
@@ -170,7 +166,6 @@ function App() {
     event.target.value = '';
   };
 
-  // Export to CSV
   const exportToCSV = () => {
     const csvContent = [
       'Bring?,Packed?,Items to Pack,Category,Notes',
@@ -188,7 +183,6 @@ function App() {
     window.URL.revokeObjectURL(url);
   };
 
-  // Clear all data
   const clearAllData = async () => {
     if (!window.confirm('Delete all items from database? This cannot be undone.')) return;
     
@@ -207,350 +201,468 @@ function App() {
     }
   };
 
-  // Filter items
   const filteredItems = items.filter(item => 
     item.items_to_pack.toLowerCase().includes(searchTerm.toLowerCase()) ||
     item.category.toLowerCase().includes(searchTerm.toLowerCase()) ||
-    item.notes.toLowerCase().includes(searchTerm.toLowerCase())
+    (item.notes && item.notes.toLowerCase().includes(searchTerm.toLowerCase()))
   );
 
-  // Trip items (selected for trip)
   const tripItems = items.filter(item => item.bring_flag === 'YES');
   const packedItems = tripItems.filter(item => item.packed_flag === 'YES');
 
-  // Group items by category
   const groupedItems = filteredItems.reduce((groups, item) => {
     const category = item.category || 'Other';
-    if (!groups[category]) {
-      groups[category] = [];
-    }
+    if (!groups[category]) groups[category] = [];
     groups[category].push(item);
     return groups;
   }, {});
 
   const groupedTripItems = tripItems.reduce((groups, item) => {
     const category = item.category || 'Other';
-    if (!groups[category]) {
-      groups[category] = [];
-    }
+    if (!groups[category]) groups[category] = [];
     groups[category].push(item);
     return groups;
   }, {});
 
   if (loading) {
     return (
-      <div style={{ padding: '20px', textAlign: 'center' }}>
-        <p>Loading from database...</p>
-      </div>
+      <>
+        <style dangerouslySetInnerHTML={{__html: `
+          * { margin: 0; padding: 0; box-sizing: border-box; }
+          @keyframes spin {
+            0% { transform: rotate(0deg); }
+            100% { transform: rotate(360deg); }
+          }
+        `}} />
+        <div style={{
+          fontFamily: '-apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif',
+          background: 'linear-gradient(135deg, #667eea 0%, #764ba2 100%)',
+          minHeight: '100vh',
+          display: 'flex',
+          alignItems: 'center',
+          justifyContent: 'center',
+          color: 'white'
+        }}>
+          <div style={{ textAlign: 'center' }}>
+            <div style={{
+              width: '40px',
+              height: '40px',
+              border: '4px solid rgba(255,255,255,0.3)',
+              borderTop: '4px solid white',
+              borderRadius: '50%',
+              animation: 'spin 1s linear infinite',
+              margin: '0 auto 20px'
+            }}></div>
+            <p>Loading your packing lists...</p>
+          </div>
+        </div>
+      </>
     );
   }
 
   return (
-    <div style={{ fontFamily: 'Arial, sans-serif', backgroundColor: '#f5f5f5', minHeight: '100vh' }}>
-      {/* Header */}
-      <div style={{
-        background: 'linear-gradient(135deg, #667eea 0%, #764ba2 100%)',
-        color: 'white',
-        padding: '20px',
-        boxShadow: '0 2px 10px rgba(0,0,0,0.1)'
-      }}>
-        <div style={{ maxWidth: '1200px', margin: '0 auto' }}>
-          <h1 style={{ margin: 0, fontSize: '2rem' }}>🎒 PackTrack</h1>
-          <p style={{ margin: '5px 0 0 0', opacity: 0.9 }}>Smart Packing Lists</p>
+    <>
+      <style dangerouslySetInnerHTML={{__html: `
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+        
+        body {
+          font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+          background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+          min-height: 100vh;
+          padding: 10px;
+        }
+
+        .app-container {
+          max-width: 600px;
+          margin: 0 auto;
+          background: white;
+          border-radius: 20px;
+          box-shadow: 0 20px 40px rgba(0, 0, 0, 0.1);
+          overflow: hidden;
+        }
+
+        .header {
+          background: linear-gradient(135deg, #4facfe 0%, #00f2fe 100%);
+          color: white;
+          padding: 20px;
+          text-align: center;
+        }
+
+        .header h1 {
+          font-size: 24px;
+          margin-bottom: 10px;
+        }
+
+        .tab-buttons {
+          display: flex;
+          background: #f8f9fa;
+          border-bottom: 1px solid #e9ecef;
+        }
+
+        .tab-button {
+          flex: 1;
+          padding: 15px;
+          background: none;
+          border: none;
+          font-size: 16px;
+          cursor: pointer;
+          transition: all 0.3s;
+        }
+
+        .tab-button.active {
+          background: white;
+          border-bottom: 3px solid #4facfe;
+          color: #4facfe;
+          font-weight: 600;
+        }
+
+        .content {
+          padding: 20px;
+          max-height: 70vh;
+          overflow-y: auto;
+        }
+
+        .search-box {
+          width: 100%;
+          padding: 12px;
+          margin-bottom: 20px;
+          border: 2px solid #e9ecef;
+          border-radius: 10px;
+          font-size: 16px;
+        }
+
+        .category-section {
+          margin-bottom: 25px;
+        }
+
+        .category-header {
+          background: #f8f9fa;
+          padding: 12px 15px;
+          border-radius: 10px;
+          font-weight: 600;
+          color: #495057;
+          margin-bottom: 10px;
+          display: flex;
+          justify-content: space-between;
+          align-items: center;
+        }
+
+        .category-count {
+          background: #6c757d;
+          color: white;
+          padding: 4px 8px;
+          border-radius: 15px;
+          font-size: 12px;
+        }
+
+        .item {
+          display: flex;
+          align-items: center;
+          padding: 15px;
+          margin-bottom: 8px;
+          background: #f8f9fa;
+          border-radius: 10px;
+          transition: all 0.3s;
+        }
+
+        .item:hover {
+          background: #e9ecef;
+        }
+
+        .item.packed {
+          opacity: 0.6;
+          background: #d4edda;
+        }
+
+        .checkbox {
+          width: 20px;
+          height: 20px;
+          margin-right: 15px;
+          cursor: pointer;
+        }
+
+        .item-content {
+          flex: 1;
+        }
+
+        .item-name {
+          font-weight: 500;
+          color: #212529;
+          margin-bottom: 4px;
+        }
+
+        .item-notes {
+          font-size: 12px;
+          color: #6c757d;
+          font-style: italic;
+        }
+
+        .remove-btn {
+          background: #dc3545;
+          color: white;
+          border: none;
+          padding: 6px 12px;
+          border-radius: 15px;
+          font-size: 12px;
+          cursor: pointer;
+          margin-left: 10px;
+        }
+
+        .stats {
+          background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+          color: white;
+          padding: 15px;
+          border-radius: 10px;
+          margin-bottom: 20px;
+          text-align: center;
+        }
+
+        .stats-grid {
+          display: grid;
+          grid-template-columns: 1fr 1fr 1fr;
+          gap: 15px;
+          margin-top: 10px;
+        }
+
+        .stat-item {
+          text-align: center;
+        }
+
+        .stat-number {
+          font-size: 24px;
+          font-weight: bold;
+        }
+
+        .stat-label {
+          font-size: 12px;
+          opacity: 0.8;
+        }
+
+        .import-section {
+          background: #fff3cd;
+          border: 1px solid #ffeaa7;
+          border-radius: 10px;
+          padding: 20px;
+          margin-bottom: 20px;
+          text-align: center;
+        }
+
+        .file-input {
+          margin: 10px 0;
+        }
+
+        .btn {
+          background: #4facfe;
+          color: white;
+          border: none;
+          padding: 12px 24px;
+          border-radius: 10px;
+          font-size: 16px;
+          cursor: pointer;
+          transition: all 0.3s;
+          margin: 0 5px;
+        }
+
+        .btn:hover {
+          background: #0056b3;
+        }
+
+        .btn-small {
+          padding: 8px 16px;
+          font-size: 14px;
+          margin: 0 5px;
+        }
+
+        .empty-state {
+          text-align: center;
+          padding: 40px 20px;
+          color: #6c757d;
+        }
+
+        .actions-bar {
+          margin-bottom: 20px;
+          display: flex;
+          gap: 10px;
+          flex-wrap: wrap;
+        }
+
+        .file-upload-btn {
+          position: relative;
+          overflow: hidden;
+          display: inline-block;
+        }
+
+        .file-upload-btn input[type=file] {
+          position: absolute;
+          left: -9999px;
+        }
+      `}} />
+      
+      <div className="app-container">
+        <div className="header">
+          <h1>🎒 My Packing List</h1>
+          <p>Never forget anything again!</p>
         </div>
-      </div>
 
-      <div style={{ maxWidth: '1200px', margin: '0 auto', padding: '20px' }}>
-        {/* Action Bar */}
-        <div style={{ marginBottom: '20px', display: 'flex', gap: '10px', flexWrap: 'wrap' }}>
-          <label style={{ 
-            backgroundColor: '#28a745', 
-            color: 'white', 
-            padding: '10px 20px', 
-            borderRadius: '6px',
-            cursor: 'pointer',
-            fontSize: '14px'
-          }}>
-            📤 Import CSV
-            <input
-              type="file"
-              accept=".csv"
-              onChange={handleFileUpload}
-              style={{ display: 'none' }}
-            />
-          </label>
-          
+        <div className="tab-buttons">
           <button 
-            onClick={exportToCSV}
-            style={{
-              backgroundColor: '#17a2b8',
-              color: 'white',
-              padding: '10px 20px',
-              border: 'none',
-              borderRadius: '6px',
-              cursor: 'pointer',
-              fontSize: '14px'
-            }}
-          >
-            📥 Export CSV
-          </button>
-
-          <button 
-            onClick={loadSampleDataToDatabase}
-            style={{
-              backgroundColor: '#ffc107',
-              color: 'black',
-              padding: '10px 20px',
-              border: 'none',
-              borderRadius: '6px',
-              cursor: 'pointer',
-              fontSize: '14px'
-            }}
-          >
-            📦 Load Sample
-          </button>
-
-          <button 
-            onClick={clearAllData}
-            style={{
-              backgroundColor: '#dc3545',
-              color: 'white',
-              padding: '10px 20px',
-              border: 'none',
-              borderRadius: '6px',
-              cursor: 'pointer',
-              fontSize: '14px'
-            }}
-          >
-            🗑️ Clear All
-          </button>
-        </div>
-
-        {/* Tab Navigation */}
-        <div style={{ display: 'flex', background: '#f8f9fa', borderRadius: '6px 6px 0 0', overflow: 'hidden' }}>
-          <button
+            className={`tab-button ${activeTab === 'master' ? 'active' : ''}`}
             onClick={() => setActiveTab('master')}
-            style={{
-              flex: 1,
-              padding: '15px',
-              border: 'none',
-              background: activeTab === 'master' ? 'white' : 'transparent',
-              borderBottom: activeTab === 'master' ? '3px solid #667eea' : 'none',
-              color: activeTab === 'master' ? '#667eea' : '#666',
-              fontWeight: activeTab === 'master' ? 'bold' : 'normal',
-              cursor: 'pointer',
-              fontSize: '16px'
-            }}
           >
-            📋 Master List ({items.length})
+            📋 Master List
           </button>
-          <button
+          <button 
+            className={`tab-button ${activeTab === 'trip' ? 'active' : ''}`}
             onClick={() => setActiveTab('trip')}
-            style={{
-              flex: 1,
-              padding: '15px',
-              border: 'none',
-              background: activeTab === 'trip' ? 'white' : 'transparent',
-              borderBottom: activeTab === 'trip' ? '3px solid #667eea' : 'none',
-              color: activeTab === 'trip' ? '#667eea' : '#666',
-              fontWeight: activeTab === 'trip' ? 'bold' : 'normal',
-              cursor: 'pointer',
-              fontSize: '16px'
-            }}
           >
-            ✈️ Trip List ({tripItems.length})
+            ✈️ Trip List
           </button>
         </div>
 
-        {/* Tab Content */}
-        <div style={{ background: 'white', borderRadius: '0 0 6px 6px', minHeight: '400px' }}>
+        <div className="content">
           {activeTab === 'master' && (
-            <div style={{ padding: '20px' }}>
-              {/* Search */}
-              <input
-                type="text"
-                placeholder="🔍 Search items..."
-                value={searchTerm}
-                onChange={(e) => setSearchTerm(e.target.value)}
-                style={{
-                  width: '100%',
-                  padding: '12px',
-                  marginBottom: '20px',
-                  border: '2px solid #e9ecef',
-                  borderRadius: '6px',
-                  fontSize: '16px'
-                }}
-              />
-
-              {items.length === 0 ? (
-                <div style={{ textAlign: 'center', padding: '40px', color: '#666' }}>
-                  <p>No items yet. Import CSV or load sample data!</p>
+            <div>
+              {items.length === 0 && (
+                <div className="import-section">
+                  <h3>📁 Import Your Data</h3>
+                  <p>Upload your CSV file to get started</p>
+                  <label className="btn file-upload-btn">
+                    📤 Import CSV
+                    <input
+                      type="file"
+                      accept=".csv"
+                      onChange={handleFileUpload}
+                    />
+                  </label>
+                  <button onClick={loadSampleDataToDatabase} className="btn">
+                    Or Load Sample Data
+                  </button>
                 </div>
-              ) : (
-                Object.keys(groupedItems).sort().map(category => (
-                  <div key={category} style={{ marginBottom: '25px' }}>
-                    <div style={{
-                      background: '#f8f9fa',
-                      padding: '12px 15px',
-                      borderRadius: '6px',
-                      fontWeight: '600',
-                      color: '#495057',
-                      marginBottom: '10px',
-                      display: 'flex',
-                      justifyContent: 'space-between'
-                    }}>
-                      {category}
-                      <span style={{
-                        background: '#6c757d',
-                        color: 'white',
-                        padding: '4px 8px',
-                        borderRadius: '12px',
-                        fontSize: '12px'
-                      }}>
-                        {groupedItems[category].filter(item => item.bring_flag === 'YES').length}/{groupedItems[category].length}
-                      </span>
-                    </div>
-                    
-                    {groupedItems[category].map(item => (
-                      <div key={item.id} style={{
-                        display: 'flex',
-                        alignItems: 'center',
-                        padding: '15px',
-                        marginBottom: '8px',
-                        background: '#f8f9fa',
-                        borderRadius: '6px',
-                        transition: 'all 0.3s'
-                      }}>
-                        <input
-                          type="checkbox"
-                          checked={item.bring_flag === 'YES'}
-                          onChange={() => toggleBring(item.id)}
-                          style={{ width: '18px', height: '18px', marginRight: '15px', cursor: 'pointer' }}
-                        />
-                        <div style={{ flex: 1 }}>
-                          <div style={{ fontWeight: '500', color: '#212529', marginBottom: '4px' }}>
-                            {item.items_to_pack}
-                          </div>
-                          {item.notes && (
-                            <div style={{ fontSize: '12px', color: '#6c757d', fontStyle: 'italic' }}>
-                              {item.notes}
-                            </div>
-                          )}
-                        </div>
-                      </div>
-                    ))}
+              )}
+
+              {items.length > 0 && (
+                <div>
+                  <div className="actions-bar">
+                    <label className="btn btn-small file-upload-btn">
+                      📤 Import CSV
+                      <input
+                        type="file"
+                        accept=".csv"
+                        onChange={handleFileUpload}
+                      />
+                    </label>
+                    <button onClick={exportToCSV} className="btn btn-small">
+                      📥 Export CSV
+                    </button>
+                    <button onClick={loadSampleDataToDatabase} className="btn btn-small">
+                      📦 Load Sample
+                    </button>
+                    <button onClick={clearAllData} className="btn btn-small" style={{background: '#dc3545'}}>
+                      🗑️ Clear All
+                    </button>
                   </div>
-                ))
+
+                  <input
+                    type="text"
+                    className="search-box"
+                    placeholder="🔍 Search items..."
+                    value={searchTerm}
+                    onChange={(e) => setSearchTerm(e.target.value)}
+                  />
+
+                  {Object.keys(groupedItems).sort().map(category => (
+                    <div key={category} className="category-section">
+                      <div className="category-header">
+                        {category}
+                        <span className="category-count">
+                          {groupedItems[category].filter(item => item.bring_flag === 'YES').length}/{groupedItems[category].length}
+                        </span>
+                      </div>
+                      
+                      {groupedItems[category].map(item => (
+                        <div key={item.id} className="item">
+                          <input
+                            type="checkbox"
+                            className="checkbox"
+                            checked={item.bring_flag === 'YES'}
+                            onChange={() => toggleBring(item.id)}
+                          />
+                          <div className="item-content">
+                            <div className="item-name">{item.items_to_pack}</div>
+                            {item.notes && (
+                              <div className="item-notes">{item.notes}</div>
+                            )}
+                          </div>
+                        </div>
+                      ))}
+                    </div>
+                  ))}
+                </div>
               )}
             </div>
           )}
 
           {activeTab === 'trip' && (
-            <div style={{ padding: '20px' }}>
-              {/* Trip Stats */}
+            <div>
               {tripItems.length > 0 && (
-                <div style={{
-                  background: 'linear-gradient(135deg, #667eea 0%, #764ba2 100%)',
-                  color: 'white',
-                  padding: '20px',
-                  borderRadius: '10px',
-                  marginBottom: '20px',
-                  textAlign: 'center'
-                }}>
-                  <h3 style={{ margin: '0 0 10px 0' }}>📊 Trip Progress</h3>
-                  <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr', gap: '20px', marginTop: '15px' }}>
-                    <div>
-                      <div style={{ fontSize: '24px', fontWeight: 'bold' }}>{tripItems.length}</div>
-                      <div style={{ fontSize: '12px', opacity: 0.8 }}>TO PACK</div>
+                <div className="stats">
+                  <h3>📊 Trip Progress</h3>
+                  <div className="stats-grid">
+                    <div className="stat-item">
+                      <div className="stat-number">{tripItems.length}</div>
+                      <div className="stat-label">To Pack</div>
                     </div>
-                    <div>
-                      <div style={{ fontSize: '24px', fontWeight: 'bold' }}>{packedItems.length}</div>
-                      <div style={{ fontSize: '12px', opacity: 0.8 }}>PACKED</div>
+                    <div className="stat-item">
+                      <div className="stat-number">{packedItems.length}</div>
+                      <div className="stat-label">Packed</div>
                     </div>
-                    <div>
-                      <div style={{ fontSize: '24px', fontWeight: 'bold' }}>
+                    <div className="stat-item">
+                      <div className="stat-number">
                         {tripItems.length > 0 ? Math.round((packedItems.length / tripItems.length) * 100) : 0}%
                       </div>
-                      <div style={{ fontSize: '12px', opacity: 0.8 }}>COMPLETE</div>
+                      <div className="stat-label">Complete</div>
                     </div>
                   </div>
                 </div>
               )}
 
               {tripItems.length === 0 ? (
-                <div style={{ textAlign: 'center', padding: '40px', color: '#666' }}>
-                  <div style={{ fontSize: '48px', marginBottom: '15px' }}>✈️</div>
+                <div className="empty-state">
+                  <div style={{fontSize: '48px', marginBottom: '15px'}}>✈️</div>
                   <p>No items selected for this trip</p>
                   <p>Go to Master List to select items</p>
                 </div>
               ) : (
                 Object.keys(groupedTripItems).sort().map(category => (
-                  <div key={category} style={{ marginBottom: '25px' }}>
-                    <div style={{
-                      background: '#f8f9fa',
-                      padding: '12px 15px',
-                      borderRadius: '6px',
-                      fontWeight: '600',
-                      color: '#495057',
-                      marginBottom: '10px',
-                      display: 'flex',
-                      justifyContent: 'space-between'
-                    }}>
+                  <div key={category} className="category-section">
+                    <div className="category-header">
                       {category}
-                      <span style={{
-                        background: '#6c757d',
-                        color: 'white',
-                        padding: '4px 8px',
-                        borderRadius: '12px',
-                        fontSize: '12px'
-                      }}>
+                      <span className="category-count">
                         {groupedTripItems[category].filter(item => item.packed_flag === 'YES').length}/{groupedTripItems[category].length} packed
                       </span>
                     </div>
                     
                     {groupedTripItems[category].map(item => (
-                      <div key={item.id} style={{
-                        display: 'flex',
-                        alignItems: 'center',
-                        padding: '15px',
-                        marginBottom: '8px',
-                        background: item.packed_flag === 'YES' ? '#d4edda' : '#f8f9fa',
-                        borderRadius: '6px',
-                        opacity: item.packed_flag === 'YES' ? 0.8 : 1,
-                        transition: 'all 0.3s'
-                      }}>
+                      <div key={item.id} className={`item ${item.packed_flag === 'YES' ? 'packed' : ''}`}>
                         <input
                           type="checkbox"
+                          className="checkbox"
                           checked={item.packed_flag === 'YES'}
                           onChange={() => togglePacked(item.id)}
-                          style={{ width: '18px', height: '18px', marginRight: '15px', cursor: 'pointer' }}
                         />
-                        <div style={{ flex: 1 }}>
-                          <div style={{ 
-                            fontWeight: '500', 
-                            color: '#212529', 
-                            marginBottom: '4px',
+                        <div className="item-content">
+                          <div className="item-name" style={{
                             textDecoration: item.packed_flag === 'YES' ? 'line-through' : 'none'
                           }}>
                             {item.items_to_pack}
                           </div>
                           {item.notes && (
-                            <div style={{ fontSize: '12px', color: '#6c757d', fontStyle: 'italic' }}>
-                              {item.notes}
-                            </div>
+                            <div className="item-notes">{item.notes}</div>
                           )}
                         </div>
                         <button
+                          className="remove-btn"
                           onClick={() => toggleBring(item.id)}
-                          style={{
-                            background: '#dc3545',
-                            color: 'white',
-                            border: 'none',
-                            padding: '6px 12px',
-                            borderRadius: '15px',
-                            fontSize: '12px',
-                            cursor: 'pointer'
-                          }}
                         >
                           Remove
                         </button>
@@ -563,7 +675,7 @@ function App() {
           )}
         </div>
       </div>
-    </div>
+    </>
   );
 }
 
