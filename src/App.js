@@ -6,6 +6,11 @@ function App() {
   const [loading, setLoading] = useState(true);
   const [activeTab, setActiveTab] = useState('master');
   const [searchTerm, setSearchTerm] = useState('');
+  
+  // Add new item state
+  const [newItemName, setNewItemName] = useState('');
+  const [newItemCategory, setNewItemCategory] = useState('');
+  const [newItemNotes, setNewItemNotes] = useState('');
 
   // Load data from database on startup
   useEffect(() => {
@@ -47,6 +52,47 @@ function App() {
     }
   };
 
+  // Add new item
+  const addNewItem = async () => {
+    if (!newItemName.trim()) {
+      alert('Please enter an item name');
+      return;
+    }
+
+    let category = newItemCategory.trim();
+    if (!category) {
+      category = prompt('Enter category name:');
+      if (!category) {
+        alert('Please enter a category');
+        return;
+      }
+    }
+
+    try {
+      const { data, error } = await supabase
+        .from('packing_items')
+        .insert([{
+          bring_flag: 'NO',
+          packed_flag: 'NO',
+          items_to_pack: newItemName.trim(),
+          category: category,
+          notes: newItemNotes.trim()
+        }])
+        .select();
+      
+      if (error) throw error;
+      
+      setNewItemName('');
+      setNewItemCategory('');
+      setNewItemNotes('');
+      await loadItemsFromDatabase();
+      alert(`✅ Added "${newItemName}" to ${category}!`);
+    } catch (error) {
+      console.error('Error adding item:', error);
+      alert('Error adding item to database');
+    }
+  };
+
   const saveItemsToDatabase = async (itemsToSave) => {
     try {
       const formattedItems = itemsToSave.map(item => ({
@@ -54,7 +100,7 @@ function App() {
         packed_flag: item.packed_flag || 'NO',
         items_to_pack: item.items_to_pack,
         category: item.category,
-        notes: item.notes
+        notes: item.notes || ''
       }));
 
       const { data, error } = await supabase
@@ -104,22 +150,22 @@ function App() {
 
   const loadSampleDataToDatabase = async () => {
     const sampleItems = [
-      { bring_flag: 'NO', packed_flag: 'NO', items_to_pack: 'Laptop', category: 'Electronics', notes: 'Work laptop' },
-      { bring_flag: 'NO', packed_flag: 'NO', items_to_pack: 'Charger', category: 'Electronics', notes: 'USB-C' },
-      { bring_flag: 'NO', packed_flag: 'NO', items_to_pack: 'T-shirts', category: 'Clothes', notes: '3-4 pieces' },
-      { bring_flag: 'NO', packed_flag: 'NO', items_to_pack: 'Jeans', category: 'Clothes', notes: 'Comfortable pair' },
-      { bring_flag: 'NO', packed_flag: 'NO', items_to_pack: 'Toothbrush', category: 'Toiletries', notes: 'Electric' },
-      { bring_flag: 'NO', packed_flag: 'NO', items_to_pack: 'Toothpaste', category: 'Toiletries', notes: 'Travel size' },
-      { bring_flag: 'NO', packed_flag: 'NO', items_to_pack: 'Passport', category: 'Documents', notes: 'Check expiry' },
-      { bring_flag: 'NO', packed_flag: 'NO', items_to_pack: 'Tickets', category: 'Documents', notes: 'Print backup' },
-      { bring_flag: 'NO', packed_flag: 'NO', items_to_pack: 'Sunglasses', category: 'Accessories', notes: 'UV protection' },
-      { bring_flag: 'NO', packed_flag: 'NO', items_to_pack: 'Camera', category: 'Electronics', notes: "Don't forget SD card" }
+      { bring_flag: 'NO', packed_flag: 'NO', items_to_pack: 'Laptop', category: 'Electronics', notes: 'Work laptop with charger' },
+      { bring_flag: 'NO', packed_flag: 'NO', items_to_pack: 'Phone charger', category: 'Electronics', notes: 'USB-C, bring extra cable' },
+      { bring_flag: 'NO', packed_flag: 'NO', items_to_pack: 'T-shirts', category: 'Clothes', notes: '3-4 pieces, pack light colors' },
+      { bring_flag: 'NO', packed_flag: 'NO', items_to_pack: 'Jeans', category: 'Clothes', notes: 'Comfortable pair for walking' },
+      { bring_flag: 'NO', packed_flag: 'NO', items_to_pack: 'Toothbrush', category: 'Toiletries', notes: 'Electric toothbrush + charger' },
+      { bring_flag: 'NO', packed_flag: 'NO', items_to_pack: 'Toothpaste', category: 'Toiletries', notes: 'Travel size, under 3oz' },
+      { bring_flag: 'NO', packed_flag: 'NO', items_to_pack: 'Passport', category: 'Documents', notes: 'Check expiry date first!' },
+      { bring_flag: 'NO', packed_flag: 'NO', items_to_pack: 'Tickets', category: 'Documents', notes: 'Print backup copies' },
+      { bring_flag: 'NO', packed_flag: 'NO', items_to_pack: 'Sunglasses', category: 'Accessories', notes: 'UV protection, bring case' },
+      { bring_flag: 'NO', packed_flag: 'NO', items_to_pack: 'Camera', category: 'Electronics', notes: 'Don\'t forget SD card and extra batteries' }
     ];
 
     const savedItems = await saveItemsToDatabase(sampleItems);
     if (savedItems.length > 0) {
       await loadItemsFromDatabase();
-      alert(`✅ Loaded ${savedItems.length} sample items to database!`);
+      alert(`✅ Loaded ${savedItems.length} sample items with notes!`);
     }
   };
 
@@ -170,7 +216,7 @@ function App() {
     const csvContent = [
       'Bring?,Packed?,Items to Pack,Category,Notes',
       ...items.map(item => 
-        `"${item.bring_flag}","${item.packed_flag}","${item.items_to_pack}","${item.category}","${item.notes}"`
+        `"${item.bring_flag}","${item.packed_flag}","${item.items_to_pack}","${item.category}","${item.notes || ''}"`
       )
     ].join('\n');
 
@@ -200,6 +246,9 @@ function App() {
       alert('Error deleting from database');
     }
   };
+
+  // Get categories for dropdown
+  const categories = [...new Set(items.map(item => item.category))].sort();
 
   const filteredItems = items.filter(item => 
     item.items_to_pack.toLowerCase().includes(searchTerm.toLowerCase()) ||
@@ -322,6 +371,38 @@ function App() {
           overflow-y: auto;
         }
 
+        .add-item-section {
+          background: #e8f5e8;
+          border: 1px solid #c3e6cb;
+          border-radius: 10px;
+          padding: 15px;
+          margin-bottom: 20px;
+        }
+
+        .add-item-section h3 {
+          margin-bottom: 15px;
+          color: #155724;
+        }
+
+        .add-item-form {
+          display: grid;
+          grid-template-columns: 1fr 1fr;
+          gap: 10px;
+          align-items: end;
+        }
+
+        .add-input {
+          padding: 10px;
+          border: 2px solid #c3e6cb;
+          border-radius: 8px;
+          font-size: 14px;
+        }
+
+        .add-item-form .btn {
+          grid-column: span 2;
+          margin-top: 10px;
+        }
+
         .search-box {
           width: 100%;
           padding: 12px;
@@ -357,7 +438,7 @@ function App() {
 
         .item {
           display: flex;
-          align-items: center;
+          align-items: flex-start;
           padding: 15px;
           margin-bottom: 8px;
           background: #f8f9fa;
@@ -378,7 +459,9 @@ function App() {
           width: 20px;
           height: 20px;
           margin-right: 15px;
+          margin-top: 2px;
           cursor: pointer;
+          flex-shrink: 0;
         }
 
         .item-content {
@@ -388,13 +471,19 @@ function App() {
         .item-name {
           font-weight: 500;
           color: #212529;
-          margin-bottom: 4px;
+          margin-bottom: 6px;
+          font-size: 16px;
         }
 
         .item-notes {
-          font-size: 12px;
+          font-size: 13px;
           color: #6c757d;
           font-style: italic;
+          line-height: 1.4;
+          background: rgba(108, 117, 125, 0.1);
+          padding: 6px 10px;
+          border-radius: 6px;
+          border-left: 3px solid #6c757d;
         }
 
         .remove-btn {
@@ -406,6 +495,8 @@ function App() {
           font-size: 12px;
           cursor: pointer;
           margin-left: 10px;
+          margin-top: 2px;
+          flex-shrink: 0;
         }
 
         .stats {
@@ -496,6 +587,16 @@ function App() {
           position: absolute;
           left: -9999px;
         }
+
+        @media (max-width: 600px) {
+          .add-item-form {
+            grid-template-columns: 1fr;
+          }
+
+          .add-item-form .btn {
+            grid-column: span 1;
+          }
+        }
       `}} />
       
       <div className="app-container">
@@ -542,6 +643,40 @@ function App() {
 
               {items.length > 0 && (
                 <div>
+                  {/* Add New Item Section */}
+                  <div className="add-item-section">
+                    <h3>➕ Add New Item</h3>
+                    <div className="add-item-form">
+                      <input
+                        type="text"
+                        placeholder="Item name"
+                        value={newItemName}
+                        onChange={(e) => setNewItemName(e.target.value)}
+                        className="add-input"
+                      />
+                      <select 
+                        value={newItemCategory} 
+                        onChange={(e) => setNewItemCategory(e.target.value)}
+                        className="add-input"
+                      >
+                        <option value="">Select category</option>
+                        {categories.map(cat => (
+                          <option key={cat} value={cat}>{cat}</option>
+                        ))}
+                        <option value="Other">+ Add New Category</option>
+                      </select>
+                      <input
+                        type="text"
+                        placeholder="Notes (optional)"
+                        value={newItemNotes}
+                        onChange={(e) => setNewItemNotes(e.target.value)}
+                        className="add-input"
+                        style={{ gridColumn: 'span 2' }}
+                      />
+                      <button onClick={addNewItem} className="btn">Add Item</button>
+                    </div>
+                  </div>
+
                   <div className="actions-bar">
                     <label className="btn btn-small file-upload-btn">
                       📤 Import CSV
@@ -589,8 +724,8 @@ function App() {
                           />
                           <div className="item-content">
                             <div className="item-name">{item.items_to_pack}</div>
-                            {item.notes && (
-                              <div className="item-notes">{item.notes}</div>
+                            {item.notes && item.notes.trim() && (
+                              <div className="item-notes">📝 {item.notes}</div>
                             )}
                           </div>
                         </div>
@@ -656,8 +791,8 @@ function App() {
                           }}>
                             {item.items_to_pack}
                           </div>
-                          {item.notes && (
-                            <div className="item-notes">{item.notes}</div>
+                          {item.notes && item.notes.trim() && (
+                            <div className="item-notes">📝 {item.notes}</div>
                           )}
                         </div>
                         <button
