@@ -6,7 +6,7 @@ function App() {
   const [loading, setLoading] = useState(true);
   const [activeTab, setActiveTab] = useState('master');
   const [searchTerm, setSearchTerm] = useState('');
-  
+
   // Add new item state
   const [newItemName, setNewItemName] = useState('');
   const [newItemCategory, setNewItemCategory] = useState('');
@@ -28,7 +28,7 @@ function App() {
         .select('*')
         .order('category', { ascending: true })
         .order('items_to_pack', { ascending: true });
-      
+
       if (error) throw error;
       setItems(data || []);
     } catch (error) {
@@ -49,7 +49,7 @@ function App() {
           notes: item.notes
         })
         .eq('id', item.id);
-      
+
       if (error) throw error;
     } catch (error) {
       console.error('Error updating item:', error);
@@ -60,15 +60,15 @@ function App() {
   // Delete individual item
   const deleteItem = async (itemId, itemName) => {
     if (!window.confirm(`Delete "${itemName}" permanently? This cannot be undone.`)) return;
-    
+
     try {
       const { error } = await supabase
         .from('packing_items')
         .delete()
         .eq('id', itemId);
-      
+
       if (error) throw error;
-      
+
       // Remove from local state
       setItems(items.filter(item => item.id !== itemId));
       alert(`✅ Deleted "${itemName}"`);
@@ -130,9 +130,9 @@ function App() {
           notes: newItemNotes.trim()
         }])
         .select();
-      
+
       if (error) throw error;
-      
+
       setNewItemName('');
       setNewItemCategory('');
       setNewItemNotes('');
@@ -158,7 +158,7 @@ function App() {
         .from('packing_items')
         .insert(formattedItems)
         .select();
-      
+
       if (error) throw error;
       return data;
     } catch (error) {
@@ -171,8 +171,8 @@ function App() {
   const toggleBring = async (itemId) => {
     const updatedItems = items.map(item => {
       if (item.id === itemId) {
-        const updatedItem = { 
-          ...item, 
+        const updatedItem = {
+          ...item,
           bring_flag: item.bring_flag === 'YES' ? 'NO' : 'YES',
           packed_flag: item.bring_flag === 'YES' ? 'NO' : item.packed_flag
         };
@@ -187,8 +187,8 @@ function App() {
   const togglePacked = async (itemId) => {
     const updatedItems = items.map(item => {
       if (item.id === itemId) {
-        const updatedItem = { 
-          ...item, 
+        const updatedItem = {
+          ...item,
           packed_flag: item.packed_flag === 'YES' ? 'NO' : 'YES'
         };
         updateItemInDatabase(updatedItem);
@@ -229,11 +229,11 @@ function App() {
       try {
         const text = e.target.result;
         const lines = text.split('\n').filter(line => line.trim());
-        
+
         const importedItems = [];
         for (let i = 1; i < lines.length; i++) {
           const values = lines[i].split(',').map(v => v.replace(/"/g, '').trim());
-          
+
           if (values[2]) {
             importedItems.push({
               bring_flag: values[0] || 'NO',
@@ -244,7 +244,7 @@ function App() {
             });
           }
         }
-        
+
         if (importedItems.length > 0) {
           const savedItems = await saveItemsToDatabase(importedItems);
           if (savedItems.length > 0) {
@@ -252,13 +252,13 @@ function App() {
             alert(`✅ Imported ${savedItems.length} items to database!`);
           }
         }
-        
+
       } catch (error) {
         console.error('Error:', error);
         alert('Error reading CSV file');
       }
     };
-    
+
     reader.readAsText(file);
     event.target.value = '';
   };
@@ -266,7 +266,7 @@ function App() {
   const exportToCSV = () => {
     const csvContent = [
       'Bring?,Packed?,Items to Pack,Category,Notes',
-      ...items.map(item => 
+      ...items.map(item =>
         `"${item.bring_flag}","${item.packed_flag}","${item.items_to_pack}","${item.category}","${item.notes || ''}"`
       )
     ].join('\n');
@@ -282,13 +282,13 @@ function App() {
 
   const clearAllData = async () => {
     if (!window.confirm('Delete all items from database? This cannot be undone.')) return;
-    
+
     try {
       const { error } = await supabase
         .from('packing_items')
         .delete()
         .neq('id', 0);
-      
+
       if (error) throw error;
       setItems([]);
       alert('✅ All items deleted from database');
@@ -301,7 +301,7 @@ function App() {
   // Get categories for dropdown
   const categories = [...new Set(items.map(item => item.category))].sort();
 
-  const filteredItems = items.filter(item => 
+  const filteredItems = items.filter(item =>
     item.items_to_pack.toLowerCase().includes(searchTerm.toLowerCase()) ||
     item.category.toLowerCase().includes(searchTerm.toLowerCase()) ||
     (item.notes && item.notes.toLowerCase().includes(searchTerm.toLowerCase()))
@@ -327,7 +327,8 @@ function App() {
   if (loading) {
     return (
       <>
-        <style dangerouslySetInnerHTML={{__html: `
+        <style dangerouslySetInnerHTML={{
+          __html: `
           * { margin: 0; padding: 0; box-sizing: border-box; }
           @keyframes spin {
             0% { transform: rotate(0deg); }
@@ -362,7 +363,8 @@ function App() {
 
   return (
     <>
-      <style dangerouslySetInnerHTML={{__html: `
+      <style dangerouslySetInnerHTML={{
+        __html: `
         * { margin: 0; padding: 0; box-sizing: border-box; }
         
         body {
@@ -722,7 +724,7 @@ function App() {
           }
         }
       `}} />
-      
+
       <div className="app-container">
         <div className="header">
           <h1>🎒 My Packing List</h1>
@@ -730,13 +732,13 @@ function App() {
         </div>
 
         <div className="tab-buttons">
-          <button 
+          <button
             className={`tab-button ${activeTab === 'master' ? 'active' : ''}`}
             onClick={() => setActiveTab('master')}
           >
             📋 Master List
           </button>
-          <button 
+          <button
             className={`tab-button ${activeTab === 'trip' ? 'active' : ''}`}
             onClick={() => setActiveTab('trip')}
           >
@@ -778,8 +780,8 @@ function App() {
                         onChange={(e) => setNewItemName(e.target.value)}
                         className="add-input"
                       />
-                      <select 
-                        value={newItemCategory} 
+                      <select
+                        value={newItemCategory}
                         onChange={(e) => setNewItemCategory(e.target.value)}
                         className="add-input"
                       >
@@ -816,7 +818,7 @@ function App() {
                     <button onClick={loadSampleDataToDatabase} className="btn btn-small">
                       📦 Load Sample
                     </button>
-                    <button onClick={clearAllData} className="btn btn-small" style={{background: '#dc3545'}}>
+                    <button onClick={clearAllData} className="btn btn-small" style={{ background: '#dc3545' }}>
                       🗑️ Clear All
                     </button>
                   </div>
@@ -837,7 +839,7 @@ function App() {
                           {groupedItems[category].filter(item => item.bring_flag === 'YES').length}/{groupedItems[category].length}
                         </span>
                       </div>
-                      
+
                       {groupedItems[category].map(item => (
                         <div key={item.id} className="item">
                           <input
@@ -848,7 +850,7 @@ function App() {
                           />
                           <div className="item-content">
                             <div className="item-name">{item.items_to_pack}</div>
-                            
+
                             {/* Editable Notes */}
                             {editingNotes === item.id ? (
                               <div>
@@ -860,14 +862,14 @@ function App() {
                                   autoFocus
                                 />
                                 <div className="edit-notes-buttons">
-                                  <button 
-                                    className="btn-save" 
+                                  <button
+                                    className="btn-save"
                                     onClick={() => saveNotes(item.id)}
                                   >
                                     Save
                                   </button>
-                                  <button 
-                                    className="btn-cancel" 
+                                  <button
+                                    className="btn-cancel"
                                     onClick={cancelEditNotes}
                                   >
                                     Cancel
@@ -875,18 +877,18 @@ function App() {
                                 </div>
                               </div>
                             ) : (
-                              <div 
+                              <div
                                 className={`item-notes ${!item.notes || !item.notes.trim() ? 'placeholder' : ''}`}
                                 onClick={() => startEditingNotes(item.id, item.notes)}
                               >
-                                {item.notes && item.notes.trim() ? 
-                                  `📝 ${item.notes}` : 
+                                {item.notes && item.notes.trim() ?
+                                  `📝 ${item.notes}` :
                                   '📝 Click to add notes...'
                                 }
                               </div>
                             )}
                           </div>
-                          
+
                           {/* Delete Button for Master List */}
                           <div className="item-actions">
                             <button
@@ -932,7 +934,7 @@ function App() {
 
               {tripItems.length === 0 ? (
                 <div className="empty-state">
-                  <div style={{fontSize: '48px', marginBottom: '15px'}}>✈️</div>
+                  <div style={{ fontSize: '48px', marginBottom: '15px' }}>✈️</div>
                   <p>No items selected for this trip</p>
                   <p>Go to Master List to select items</p>
                 </div>
@@ -945,7 +947,7 @@ function App() {
                         {groupedTripItems[category].filter(item => item.packed_flag === 'YES').length}/{groupedTripItems[category].length} packed
                       </span>
                     </div>
-                    
+
                     {groupedTripItems[category].map(item => (
                       <div key={item.id} className={`item ${item.packed_flag === 'YES' ? 'packed' : ''}`}>
                         <input
@@ -960,7 +962,7 @@ function App() {
                           }}>
                             {item.items_to_pack}
                           </div>
-                          
+
                           {/* Editable Notes in Trip Tab Too */}
                           {editingNotes === item.id ? (
                             <div>
@@ -972,14 +974,14 @@ function App() {
                                 autoFocus
                               />
                               <div className="edit-notes-buttons">
-                                <button 
-                                  className="btn-save" 
+                                <button
+                                  className="btn-save"
                                   onClick={() => saveNotes(item.id)}
                                 >
                                   Save
                                 </button>
-                                <button 
-                                  className="btn-cancel" 
+                                <button
+                                  className="btn-cancel"
                                   onClick={cancelEditNotes}
                                 >
                                   Cancel
@@ -987,12 +989,12 @@ function App() {
                               </div>
                             </div>
                           ) : (
-                            <div 
+                            <div
                               className={`item-notes ${!item.notes || !item.notes.trim() ? 'placeholder' : ''}`}
                               onClick={() => startEditingNotes(item.id, item.notes)}
                             >
-                              {item.notes && item.notes.trim() ? 
-                                `📝 ${item.notes}` : 
+                              {item.notes && item.notes.trim() ?
+                                `📝 ${item.notes}` :
                                 '📝 Click to add notes...'
                               }
                             </div>
