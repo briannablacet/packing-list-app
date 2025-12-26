@@ -3,7 +3,7 @@ import React, { useState } from 'react';
 function App() {
   const [items, setItems] = useState([]);
 
-  // Handle CSV file upload
+  // Handle CSV file upload - SKIPPING the ID column
   const handleFileUpload = (event) => {
     const file = event.target.files[0];
     if (!file) return;
@@ -19,16 +19,15 @@ function App() {
         for (let i = 1; i < lines.length; i++) {
           const values = lines[i].split(',').map(v => v.replace(/"/g, '').trim());
           
-          // Your CSV format: ID,Bring?,Packed?,Items to Pack,Category,Notes
-          if (values[3]) { // Check if "Items to Pack" exists
+          // NEW FORMAT (no ID column): Bring?,Packed?,Items to Pack,Category,Notes
+          if (values[2]) { // Check if "Items to Pack" exists (now at index 2)
             importedItems.push({
-              id: Date.now() + i, // Simple ID
-              id_flag: values[0] || '',
-              bring_flag: values[1] || 'NO',
-              packed_flag: values[2] || 'NO', 
-              items_to_pack: values[3] || '',
-              category: values[4] || 'Misc',
-              notes: values[5] || ''
+              id: Date.now() + i, // Simple ID for React
+              bring_flag: values[0] || 'NO',     // Bring?
+              packed_flag: values[1] || 'NO',    // Packed?
+              items_to_pack: values[2] || '',    // Items to Pack
+              category: values[3] || 'Misc',     // Category
+              notes: values[4] || ''             // Notes
             });
           }
         }
@@ -44,12 +43,12 @@ function App() {
     reader.readAsText(file);
   };
 
-  // Export to CSV
+  // Export to CSV - NEW FORMAT (no ID column)
   const exportToCSV = () => {
     const csvContent = [
-      'ID,Bring?,Packed?,Items to Pack,Category,Notes',
+      'Bring?,Packed?,Items to Pack,Category,Notes',
       ...items.map(item => 
-        `"${item.id_flag}","${item.bring_flag}","${item.packed_flag}","${item.items_to_pack}","${item.category}","${item.notes}"`
+        `"${item.bring_flag}","${item.packed_flag}","${item.items_to_pack}","${item.category}","${item.notes}"`
       )
     ].join('\n');
 
@@ -65,6 +64,9 @@ function App() {
   return (
     <div style={{ padding: '20px', fontFamily: 'Arial, sans-serif' }}>
       <h1>🎒 PackTrack</h1>
+      <p style={{ color: '#666', fontSize: '14px' }}>
+        Format: Bring?,Packed?,Items to Pack,Category,Notes (ID column removed)
+      </p>
       
       <div style={{ marginBottom: '20px' }}>
         <label style={{ 
@@ -103,7 +105,12 @@ function App() {
         <h3>Items ({items.length})</h3>
         
         {items.length === 0 ? (
-          <p>No items yet. Import your CSV file to get started!</p>
+          <div>
+            <p>No items yet. Import your CSV file to get started!</p>
+            <p style={{ fontSize: '12px', color: '#666' }}>
+              Expected format: Bring?,Packed?,Items to Pack,Category,Notes
+            </p>
+          </div>
         ) : (
           <div>
             {items.map(item => (
@@ -118,7 +125,6 @@ function App() {
                 <span style={{ marginLeft: '10px', color: '#666' }}>({item.category})</span>
                 <br />
                 <small>
-                  ID: {item.id_flag} | 
                   Bring: {item.bring_flag} | 
                   Packed: {item.packed_flag}
                   {item.notes && ` | Notes: ${item.notes}`}
