@@ -12,6 +12,10 @@ function App() {
   const [newItemCategory, setNewItemCategory] = useState('');
   const [newItemNotes, setNewItemNotes] = useState('');
 
+  // Edit notes state
+  const [editingNotes, setEditingNotes] = useState(null);
+  const [editNotesText, setEditNotesText] = useState('');
+
   // Load data from database on startup
   useEffect(() => {
     loadItemsFromDatabase();
@@ -41,7 +45,8 @@ function App() {
         .from('packing_items')
         .update({
           bring_flag: item.bring_flag,
-          packed_flag: item.packed_flag
+          packed_flag: item.packed_flag,
+          notes: item.notes
         })
         .eq('id', item.id);
       
@@ -50,6 +55,31 @@ function App() {
       console.error('Error updating item:', error);
       alert('Error updating item in database');
     }
+  };
+
+  // Edit notes for existing items
+  const startEditingNotes = (itemId, currentNotes) => {
+    setEditingNotes(itemId);
+    setEditNotesText(currentNotes || '');
+  };
+
+  const saveNotes = async (itemId) => {
+    const updatedItems = items.map(item => {
+      if (item.id === itemId) {
+        const updatedItem = { ...item, notes: editNotesText.trim() };
+        updateItemInDatabase(updatedItem);
+        return updatedItem;
+      }
+      return item;
+    });
+    setItems(updatedItems);
+    setEditingNotes(null);
+    setEditNotesText('');
+  };
+
+  const cancelEditNotes = () => {
+    setEditingNotes(null);
+    setEditNotesText('');
   };
 
   // Add new item
@@ -471,7 +501,7 @@ function App() {
         .item-name {
           font-weight: 500;
           color: #212529;
-          margin-bottom: 6px;
+          margin-bottom: 8px;
           font-size: 16px;
         }
 
@@ -481,9 +511,57 @@ function App() {
           font-style: italic;
           line-height: 1.4;
           background: rgba(108, 117, 125, 0.1);
-          padding: 6px 10px;
+          padding: 8px 12px;
           border-radius: 6px;
           border-left: 3px solid #6c757d;
+          cursor: pointer;
+          transition: background 0.2s;
+        }
+
+        .item-notes:hover {
+          background: rgba(108, 117, 125, 0.15);
+        }
+
+        .item-notes.placeholder {
+          color: #adb5bd;
+          font-style: normal;
+        }
+
+        .edit-notes {
+          width: 100%;
+          padding: 8px 12px;
+          border: 2px solid #4facfe;
+          border-radius: 6px;
+          font-size: 13px;
+          font-family: inherit;
+          resize: vertical;
+          min-height: 40px;
+        }
+
+        .edit-notes-buttons {
+          display: flex;
+          gap: 8px;
+          margin-top: 8px;
+        }
+
+        .btn-save {
+          background: #28a745;
+          color: white;
+          border: none;
+          padding: 4px 12px;
+          border-radius: 4px;
+          font-size: 12px;
+          cursor: pointer;
+        }
+
+        .btn-cancel {
+          background: #6c757d;
+          color: white;
+          border: none;
+          padding: 4px 12px;
+          border-radius: 4px;
+          font-size: 12px;
+          cursor: pointer;
         }
 
         .remove-btn {
@@ -724,8 +802,42 @@ function App() {
                           />
                           <div className="item-content">
                             <div className="item-name">{item.items_to_pack}</div>
-                            {item.notes && item.notes.trim() && (
-                              <div className="item-notes">📝 {item.notes}</div>
+                            
+                            {/* Editable Notes */}
+                            {editingNotes === item.id ? (
+                              <div>
+                                <textarea
+                                  className="edit-notes"
+                                  value={editNotesText}
+                                  onChange={(e) => setEditNotesText(e.target.value)}
+                                  placeholder="Add notes..."
+                                  autoFocus
+                                />
+                                <div className="edit-notes-buttons">
+                                  <button 
+                                    className="btn-save" 
+                                    onClick={() => saveNotes(item.id)}
+                                  >
+                                    Save
+                                  </button>
+                                  <button 
+                                    className="btn-cancel" 
+                                    onClick={cancelEditNotes}
+                                  >
+                                    Cancel
+                                  </button>
+                                </div>
+                              </div>
+                            ) : (
+                              <div 
+                                className={`item-notes ${!item.notes || !item.notes.trim() ? 'placeholder' : ''}`}
+                                onClick={() => startEditingNotes(item.id, item.notes)}
+                              >
+                                {item.notes && item.notes.trim() ? 
+                                  `📝 ${item.notes}` : 
+                                  '📝 Click to add notes...'
+                                }
+                              </div>
                             )}
                           </div>
                         </div>
@@ -791,8 +903,42 @@ function App() {
                           }}>
                             {item.items_to_pack}
                           </div>
-                          {item.notes && item.notes.trim() && (
-                            <div className="item-notes">📝 {item.notes}</div>
+                          
+                          {/* Editable Notes in Trip Tab Too */}
+                          {editingNotes === item.id ? (
+                            <div>
+                              <textarea
+                                className="edit-notes"
+                                value={editNotesText}
+                                onChange={(e) => setEditNotesText(e.target.value)}
+                                placeholder="Add notes..."
+                                autoFocus
+                              />
+                              <div className="edit-notes-buttons">
+                                <button 
+                                  className="btn-save" 
+                                  onClick={() => saveNotes(item.id)}
+                                >
+                                  Save
+                                </button>
+                                <button 
+                                  className="btn-cancel" 
+                                  onClick={cancelEditNotes}
+                                >
+                                  Cancel
+                                </button>
+                              </div>
+                            </div>
+                          ) : (
+                            <div 
+                              className={`item-notes ${!item.notes || !item.notes.trim() ? 'placeholder' : ''}`}
+                              onClick={() => startEditingNotes(item.id, item.notes)}
+                            >
+                              {item.notes && item.notes.trim() ? 
+                                `📝 ${item.notes}` : 
+                                '📝 Click to add notes...'
+                              }
+                            </div>
                           )}
                         </div>
                         <button
