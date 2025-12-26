@@ -6,15 +6,19 @@ function App() {
   const [loading, setLoading] = useState(true);
   const [activeTab, setActiveTab] = useState('master');
   const [searchTerm, setSearchTerm] = useState('');
-
+  
   // Add new item state
   const [newItemName, setNewItemName] = useState('');
   const [newItemCategory, setNewItemCategory] = useState('');
   const [newItemNotes, setNewItemNotes] = useState('');
 
-  // Edit notes state
+  // Edit states
   const [editingNotes, setEditingNotes] = useState(null);
   const [editNotesText, setEditNotesText] = useState('');
+  const [editingName, setEditingName] = useState(null);
+  const [editNameText, setEditNameText] = useState('');
+  const [editingCategory, setEditingCategory] = useState(null);
+  const [editCategoryText, setEditCategoryText] = useState('');
 
   // Load data from database on startup
   useEffect(() => {
@@ -28,7 +32,7 @@ function App() {
         .select('*')
         .order('category', { ascending: true })
         .order('items_to_pack', { ascending: true });
-
+      
       if (error) throw error;
       setItems(data || []);
     } catch (error) {
@@ -46,10 +50,12 @@ function App() {
         .update({
           bring_flag: item.bring_flag,
           packed_flag: item.packed_flag,
-          notes: item.notes
+          notes: item.notes,
+          items_to_pack: item.items_to_pack,
+          category: item.category
         })
         .eq('id', item.id);
-
+      
       if (error) throw error;
     } catch (error) {
       console.error('Error updating item:', error);
@@ -60,15 +66,15 @@ function App() {
   // Delete individual item
   const deleteItem = async (itemId, itemName) => {
     if (!window.confirm(`Delete "${itemName}" permanently? This cannot be undone.`)) return;
-
+    
     try {
       const { error } = await supabase
         .from('packing_items')
         .delete()
         .eq('id', itemId);
-
+      
       if (error) throw error;
-
+      
       // Remove from local state
       setItems(items.filter(item => item.id !== itemId));
       alert(`✅ Deleted "${itemName}"`);
@@ -76,6 +82,66 @@ function App() {
       console.error('Error deleting item:', error);
       alert('Error deleting item from database');
     }
+  };
+
+  // Edit item name
+  const startEditingName = (itemId, currentName) => {
+    setEditingName(itemId);
+    setEditNameText(currentName || '');
+  };
+
+  const saveName = async (itemId) => {
+    if (!editNameText.trim()) {
+      alert('Item name cannot be empty');
+      return;
+    }
+    
+    const updatedItems = items.map(item => {
+      if (item.id === itemId) {
+        const updatedItem = { ...item, items_to_pack: editNameText.trim() };
+        updateItemInDatabase(updatedItem);
+        return updatedItem;
+      }
+      return item;
+    });
+    setItems(updatedItems);
+    setEditingName(null);
+    setEditNameText('');
+  };
+
+  const cancelEditName = () => {
+    setEditingName(null);
+    setEditNameText('');
+  };
+
+  // Edit category
+  const startEditingCategory = (itemId, currentCategory) => {
+    setEditingCategory(itemId);
+    setEditCategoryText(currentCategory || '');
+  };
+
+  const saveCategory = async (itemId) => {
+    if (!editCategoryText.trim()) {
+      alert('Category cannot be empty');
+      return;
+    }
+    
+    const updatedItems = items.map(item => {
+      if (item.id === itemId) {
+        const updatedItem = { ...item, category: editCategoryText.trim() };
+        updateItemInDatabase(updatedItem);
+        return updatedItem;
+      }
+      return item;
+    });
+    setItems(updatedItems);
+    setEditingCategory(null);
+    setEditCategoryText('');
+  };
+
+  const cancelEditCategory = () => {
+    setEditingCategory(null);
+    setEditCategoryText('');
   };
 
   // Edit notes for existing items
@@ -130,9 +196,9 @@ function App() {
           notes: newItemNotes.trim()
         }])
         .select();
-
+      
       if (error) throw error;
-
+      
       setNewItemName('');
       setNewItemCategory('');
       setNewItemNotes('');
@@ -158,7 +224,7 @@ function App() {
         .from('packing_items')
         .insert(formattedItems)
         .select();
-
+      
       if (error) throw error;
       return data;
     } catch (error) {
@@ -171,8 +237,8 @@ function App() {
   const toggleBring = async (itemId) => {
     const updatedItems = items.map(item => {
       if (item.id === itemId) {
-        const updatedItem = {
-          ...item,
+        const updatedItem = { 
+          ...item, 
           bring_flag: item.bring_flag === 'YES' ? 'NO' : 'YES',
           packed_flag: item.bring_flag === 'YES' ? 'NO' : item.packed_flag
         };
@@ -187,8 +253,8 @@ function App() {
   const togglePacked = async (itemId) => {
     const updatedItems = items.map(item => {
       if (item.id === itemId) {
-        const updatedItem = {
-          ...item,
+        const updatedItem = { 
+          ...item, 
           packed_flag: item.packed_flag === 'YES' ? 'NO' : 'YES'
         };
         updateItemInDatabase(updatedItem);
@@ -229,11 +295,11 @@ function App() {
       try {
         const text = e.target.result;
         const lines = text.split('\n').filter(line => line.trim());
-
+        
         const importedItems = [];
         for (let i = 1; i < lines.length; i++) {
           const values = lines[i].split(',').map(v => v.replace(/"/g, '').trim());
-
+          
           if (values[2]) {
             importedItems.push({
               bring_flag: values[0] || 'NO',
@@ -244,7 +310,7 @@ function App() {
             });
           }
         }
-
+        
         if (importedItems.length > 0) {
           const savedItems = await saveItemsToDatabase(importedItems);
           if (savedItems.length > 0) {
@@ -252,13 +318,13 @@ function App() {
             alert(`✅ Imported ${savedItems.length} items to database!`);
           }
         }
-
+        
       } catch (error) {
         console.error('Error:', error);
         alert('Error reading CSV file');
       }
     };
-
+    
     reader.readAsText(file);
     event.target.value = '';
   };
@@ -266,7 +332,7 @@ function App() {
   const exportToCSV = () => {
     const csvContent = [
       'Bring?,Packed?,Items to Pack,Category,Notes',
-      ...items.map(item =>
+      ...items.map(item => 
         `"${item.bring_flag}","${item.packed_flag}","${item.items_to_pack}","${item.category}","${item.notes || ''}"`
       )
     ].join('\n');
@@ -282,13 +348,13 @@ function App() {
 
   const clearAllData = async () => {
     if (!window.confirm('Delete all items from database? This cannot be undone.')) return;
-
+    
     try {
       const { error } = await supabase
         .from('packing_items')
         .delete()
         .neq('id', 0);
-
+      
       if (error) throw error;
       setItems([]);
       alert('✅ All items deleted from database');
@@ -301,7 +367,7 @@ function App() {
   // Get categories for dropdown
   const categories = [...new Set(items.map(item => item.category))].sort();
 
-  const filteredItems = items.filter(item =>
+  const filteredItems = items.filter(item => 
     item.items_to_pack.toLowerCase().includes(searchTerm.toLowerCase()) ||
     item.category.toLowerCase().includes(searchTerm.toLowerCase()) ||
     (item.notes && item.notes.toLowerCase().includes(searchTerm.toLowerCase()))
@@ -327,8 +393,7 @@ function App() {
   if (loading) {
     return (
       <>
-        <style dangerouslySetInnerHTML={{
-          __html: `
+        <style dangerouslySetInnerHTML={{__html: `
           * { margin: 0; padding: 0; box-sizing: border-box; }
           @keyframes spin {
             0% { transform: rotate(0deg); }
@@ -363,8 +428,7 @@ function App() {
 
   return (
     <>
-      <style dangerouslySetInnerHTML={{
-        __html: `
+      <style dangerouslySetInnerHTML={{__html: `
         * { margin: 0; padding: 0; box-sizing: border-box; }
         
         body {
@@ -524,8 +588,32 @@ function App() {
         .item-name {
           font-weight: 500;
           color: #212529;
-          margin-bottom: 8px;
+          margin-bottom: 4px;
           font-size: 16px;
+          cursor: pointer;
+          padding: 4px 8px;
+          border-radius: 4px;
+          transition: background 0.2s;
+        }
+
+        .item-name:hover {
+          background: rgba(59, 130, 246, 0.1);
+        }
+
+        .item-category {
+          font-size: 11px;
+          color: #6c757d;
+          background: rgba(108, 117, 125, 0.1);
+          padding: 2px 6px;
+          border-radius: 4px;
+          display: inline-block;
+          margin-bottom: 8px;
+          cursor: pointer;
+          transition: background 0.2s;
+        }
+
+        .item-category:hover {
+          background: rgba(108, 117, 125, 0.2);
         }
 
         .item-notes {
@@ -550,6 +638,25 @@ function App() {
           font-style: normal;
         }
 
+        .edit-input {
+          width: 100%;
+          padding: 6px 10px;
+          border: 2px solid #4facfe;
+          border-radius: 4px;
+          font-size: 14px;
+          font-family: inherit;
+          font-weight: 500;
+        }
+
+        .edit-category-input {
+          width: 100%;
+          padding: 4px 8px;
+          border: 2px solid #4facfe;
+          border-radius: 4px;
+          font-size: 11px;
+          font-family: inherit;
+        }
+
         .edit-notes {
           width: 100%;
           padding: 8px 12px;
@@ -559,6 +666,12 @@ function App() {
           font-family: inherit;
           resize: vertical;
           min-height: 40px;
+        }
+
+        .edit-buttons {
+          display: flex;
+          gap: 8px;
+          margin-top: 8px;
         }
 
         .edit-notes-buttons {
@@ -724,7 +837,7 @@ function App() {
           }
         }
       `}} />
-
+      
       <div className="app-container">
         <div className="header">
           <h1>🎒 My Packing List</h1>
@@ -732,13 +845,13 @@ function App() {
         </div>
 
         <div className="tab-buttons">
-          <button
+          <button 
             className={`tab-button ${activeTab === 'master' ? 'active' : ''}`}
             onClick={() => setActiveTab('master')}
           >
             📋 Master List
           </button>
-          <button
+          <button 
             className={`tab-button ${activeTab === 'trip' ? 'active' : ''}`}
             onClick={() => setActiveTab('trip')}
           >
@@ -780,8 +893,8 @@ function App() {
                         onChange={(e) => setNewItemName(e.target.value)}
                         className="add-input"
                       />
-                      <select
-                        value={newItemCategory}
+                      <select 
+                        value={newItemCategory} 
                         onChange={(e) => setNewItemCategory(e.target.value)}
                         className="add-input"
                       >
@@ -818,7 +931,7 @@ function App() {
                     <button onClick={loadSampleDataToDatabase} className="btn btn-small">
                       📦 Load Sample
                     </button>
-                    <button onClick={clearAllData} className="btn btn-small" style={{ background: '#dc3545' }}>
+                    <button onClick={clearAllData} className="btn btn-small" style={{background: '#dc3545'}}>
                       🗑️ Clear All
                     </button>
                   </div>
@@ -839,7 +952,7 @@ function App() {
                           {groupedItems[category].filter(item => item.bring_flag === 'YES').length}/{groupedItems[category].length}
                         </span>
                       </div>
-
+                      
                       {groupedItems[category].map(item => (
                         <div key={item.id} className="item">
                           <input
@@ -849,8 +962,77 @@ function App() {
                             onChange={() => toggleBring(item.id)}
                           />
                           <div className="item-content">
-                            <div className="item-name">{item.items_to_pack}</div>
+                            
+                            {/* Editable Item Name */}
+                            {editingName === item.id ? (
+                              <div>
+                                <input
+                                  className="edit-input"
+                                  value={editNameText}
+                                  onChange={(e) => setEditNameText(e.target.value)}
+                                  placeholder="Item name..."
+                                  autoFocus
+                                />
+                                <div className="edit-buttons">
+                                  <button 
+                                    className="btn-save" 
+                                    onClick={() => saveName(item.id)}
+                                  >
+                                    Save
+                                  </button>
+                                  <button 
+                                    className="btn-cancel" 
+                                    onClick={cancelEditName}
+                                  >
+                                    Cancel
+                                  </button>
+                                </div>
+                              </div>
+                            ) : (
+                              <div 
+                                className="item-name"
+                                onClick={() => startEditingName(item.id, item.items_to_pack)}
+                                title="Click to edit item name"
+                              >
+                                {item.items_to_pack}
+                              </div>
+                            )}
 
+                            {/* Editable Category */}
+                            {editingCategory === item.id ? (
+                              <div>
+                                <input
+                                  className="edit-category-input"
+                                  value={editCategoryText}
+                                  onChange={(e) => setEditCategoryText(e.target.value)}
+                                  placeholder="Category..."
+                                  autoFocus
+                                />
+                                <div className="edit-buttons">
+                                  <button 
+                                    className="btn-save" 
+                                    onClick={() => saveCategory(item.id)}
+                                  >
+                                    Save
+                                  </button>
+                                  <button 
+                                    className="btn-cancel" 
+                                    onClick={cancelEditCategory}
+                                  >
+                                    Cancel
+                                  </button>
+                                </div>
+                              </div>
+                            ) : (
+                              <div 
+                                className="item-category"
+                                onClick={() => startEditingCategory(item.id, item.category)}
+                                title="Click to edit category"
+                              >
+                                {item.category}
+                              </div>
+                            )}
+                            
                             {/* Editable Notes */}
                             {editingNotes === item.id ? (
                               <div>
@@ -862,14 +1044,14 @@ function App() {
                                   autoFocus
                                 />
                                 <div className="edit-notes-buttons">
-                                  <button
-                                    className="btn-save"
+                                  <button 
+                                    className="btn-save" 
                                     onClick={() => saveNotes(item.id)}
                                   >
                                     Save
                                   </button>
-                                  <button
-                                    className="btn-cancel"
+                                  <button 
+                                    className="btn-cancel" 
                                     onClick={cancelEditNotes}
                                   >
                                     Cancel
@@ -877,18 +1059,19 @@ function App() {
                                 </div>
                               </div>
                             ) : (
-                              <div
+                              <div 
                                 className={`item-notes ${!item.notes || !item.notes.trim() ? 'placeholder' : ''}`}
                                 onClick={() => startEditingNotes(item.id, item.notes)}
+                                title="Click to edit notes"
                               >
-                                {item.notes && item.notes.trim() ?
-                                  `📝 ${item.notes}` :
+                                {item.notes && item.notes.trim() ? 
+                                  `📝 ${item.notes}` : 
                                   '📝 Click to add notes...'
                                 }
                               </div>
                             )}
                           </div>
-
+                          
                           {/* Delete Button for Master List */}
                           <div className="item-actions">
                             <button
@@ -934,7 +1117,7 @@ function App() {
 
               {tripItems.length === 0 ? (
                 <div className="empty-state">
-                  <div style={{ fontSize: '48px', marginBottom: '15px' }}>✈️</div>
+                  <div style={{fontSize: '48px', marginBottom: '15px'}}>✈️</div>
                   <p>No items selected for this trip</p>
                   <p>Go to Master List to select items</p>
                 </div>
@@ -947,7 +1130,7 @@ function App() {
                         {groupedTripItems[category].filter(item => item.packed_flag === 'YES').length}/{groupedTripItems[category].length} packed
                       </span>
                     </div>
-
+                    
                     {groupedTripItems[category].map(item => (
                       <div key={item.id} className={`item ${item.packed_flag === 'YES' ? 'packed' : ''}`}>
                         <input
@@ -958,12 +1141,17 @@ function App() {
                         />
                         <div className="item-content">
                           <div className="item-name" style={{
-                            textDecoration: item.packed_flag === 'YES' ? 'line-through' : 'none'
+                            textDecoration: item.packed_flag === 'YES' ? 'line-through' : 'none',
+                            cursor: 'default'
                           }}>
                             {item.items_to_pack}
                           </div>
-
-                          {/* Editable Notes in Trip Tab Too */}
+                          
+                          <div className="item-category">
+                            {item.category}
+                          </div>
+                          
+                          {/* Notes still editable in trip tab */}
                           {editingNotes === item.id ? (
                             <div>
                               <textarea
@@ -974,14 +1162,14 @@ function App() {
                                 autoFocus
                               />
                               <div className="edit-notes-buttons">
-                                <button
-                                  className="btn-save"
+                                <button 
+                                  className="btn-save" 
                                   onClick={() => saveNotes(item.id)}
                                 >
                                   Save
                                 </button>
-                                <button
-                                  className="btn-cancel"
+                                <button 
+                                  className="btn-cancel" 
                                   onClick={cancelEditNotes}
                                 >
                                   Cancel
@@ -989,12 +1177,12 @@ function App() {
                               </div>
                             </div>
                           ) : (
-                            <div
+                            <div 
                               className={`item-notes ${!item.notes || !item.notes.trim() ? 'placeholder' : ''}`}
                               onClick={() => startEditingNotes(item.id, item.notes)}
                             >
-                              {item.notes && item.notes.trim() ?
-                                `📝 ${item.notes}` :
+                              {item.notes && item.notes.trim() ? 
+                                `📝 ${item.notes}` : 
                                 '📝 Click to add notes...'
                               }
                             </div>
