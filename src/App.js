@@ -20,7 +20,7 @@ function App() {
   const [editingCategory, setEditingCategory] = useState(null);
   const [editCategoryText, setEditCategoryText] = useState('');
 
-  // Load data from database on startup
+  // Load data from database on startup; add sorting
   useEffect(() => {
     loadItemsFromDatabase();
   }, []);
