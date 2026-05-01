@@ -186,7 +186,7 @@ function App() {
     }
 
     try {
-      const { data, error } = await supabase
+      const { error } = await supabase
         .from('packing_items')
         .insert([{
           bring_flag: 'NO',
