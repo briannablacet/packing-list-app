@@ -21,11 +21,19 @@ if (global.__packingListMongoClientPromise) {
   global.__packingListMongoClientPromise = clientPromise;
 }
 
+function normalizeFlag(value) {
+  return String(value || '')
+    .trim()
+    .toUpperCase() === 'YES'
+    ? 'YES'
+    : 'NO';
+}
+
 function normalizeItem(document) {
   return {
     id: document._id.toString(),
-    bring_flag: document.bring_flag || 'NO',
-    packed_flag: document.packed_flag || 'NO',
+    bring_flag: normalizeFlag(document.bring_flag),
+    packed_flag: normalizeFlag(document.packed_flag),
     items_to_pack: document.items_to_pack || '',
     category: document.category || 'Other',
     notes: document.notes || '',
@@ -34,8 +42,8 @@ function normalizeItem(document) {
 
 function sanitizeItem(payload = {}) {
   return {
-    bring_flag: payload.bring_flag === 'YES' ? 'YES' : 'NO',
-    packed_flag: payload.packed_flag === 'YES' ? 'YES' : 'NO',
+    bring_flag: normalizeFlag(payload.bring_flag),
+    packed_flag: normalizeFlag(payload.packed_flag),
     items_to_pack: (payload.items_to_pack || '').trim(),
     category: (payload.category || 'Other').trim() || 'Other',
     notes: (payload.notes || '').trim(),

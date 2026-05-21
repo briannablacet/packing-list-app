@@ -12,10 +12,12 @@ Example:
 
 ```env
 MONGODB_URI=your-real-mongodb-connection-string
-MONGODB_DB_NAME=packing-list-app
-MONGODB_COLLECTION=packing_items
+MONGODB_DB_NAME=PackingList
+MONGODB_COLLECTION=List
 API_PORT=4000
 ```
+
+For Vercel, add the same three MongoDB variables in the project settings and redeploy after saving them.
 
 ## Run the app
 
