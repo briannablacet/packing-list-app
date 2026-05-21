@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { supabase } from './lib/supabase';
+import { itemsApi } from './lib/api';
 
 function App() {
   const [items, setItems] = useState([]);
@@ -27,13 +27,7 @@ function App() {
 
   const loadItemsFromDatabase = async () => {
     try {
-      const { data, error } = await supabase
-        .from('packing_items')
-        .select('*')
-        .order('category', { ascending: true })
-        .order('items_to_pack', { ascending: true });
-
-      if (error) throw error;
+      const data = await itemsApi.getItems();
       setItems(data || []);
     } catch (error) {
       console.error('Error loading items:', error);
@@ -45,18 +39,13 @@ function App() {
 
   const updateItemInDatabase = async (item) => {
     try {
-      const { error } = await supabase
-        .from('packing_items')
-        .update({
-          bring_flag: item.bring_flag,
-          packed_flag: item.packed_flag,
-          notes: item.notes,
-          items_to_pack: item.items_to_pack,
-          category: item.category
-        })
-        .eq('id', item.id);
-
-      if (error) throw error;
+      await itemsApi.updateItem(item.id, {
+        bring_flag: item.bring_flag,
+        packed_flag: item.packed_flag,
+        notes: item.notes,
+        items_to_pack: item.items_to_pack,
+        category: item.category
+      });
     } catch (error) {
       console.error('Error updating item:', error);
       alert('Error updating item in database');
@@ -68,15 +57,8 @@ function App() {
     if (!window.confirm(`Delete "${itemName}" permanently? This cannot be undone.`)) return;
 
     try {
-      const { error } = await supabase
-        .from('packing_items')
-        .delete()
-        .eq('id', itemId);
-
-      if (error) throw error;
-
-      // Remove from local state
-      setItems(items.filter(item => item.id !== itemId));
+      await itemsApi.deleteItem(itemId);
+      setItems((currentItems) => currentItems.filter(item => item.id !== itemId));
       alert(`✅ Deleted "${itemName}"`);
     } catch (error) {
       console.error('Error deleting item:', error);
@@ -186,18 +168,13 @@ function App() {
     }
 
     try {
-      const { error } = await supabase
-        .from('packing_items')
-        .insert([{
-          bring_flag: 'NO',
-          packed_flag: 'NO',
-          items_to_pack: newItemName.trim(),
-          category: category,
-          notes: newItemNotes.trim()
-        }])
-        .select();
-
-      if (error) throw error;
+      await itemsApi.createItem({
+        bring_flag: 'NO',
+        packed_flag: 'NO',
+        items_to_pack: newItemName.trim(),
+        category: category,
+        notes: newItemNotes.trim()
+      });
 
       setNewItemName('');
       setNewItemCategory('');
@@ -220,12 +197,7 @@ function App() {
         notes: item.notes || ''
       }));
 
-      const { data, error } = await supabase
-        .from('packing_items')
-        .insert(formattedItems)
-        .select();
-
-      if (error) throw error;
+      const data = await itemsApi.bulkCreateItems(formattedItems);
       return data;
     } catch (error) {
       console.error('Error saving to database:', error);
@@ -350,12 +322,7 @@ function App() {
     if (!window.confirm('Delete all items from database? This cannot be undone.')) return;
 
     try {
-      const { error } = await supabase
-        .from('packing_items')
-        .delete()
-        .neq('id', 0);
-
-      if (error) throw error;
+      await itemsApi.clearItems();
       setItems([]);
       alert('✅ All items deleted from database');
     } catch (error) {
