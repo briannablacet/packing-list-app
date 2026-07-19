@@ -1,0 +1,30 @@
+name: MongoDB Keep-Alive
+
+# Pings the Atlas cluster on a schedule so it never hits the
+# 60-day inactivity auto-pause. Any successful connection resets the clock.
+on:
+  schedule:
+    # Every Monday at 12:00 UTC (weekly is well within the 60-day window)
+    - cron: '0 12 * * 1'
+  workflow_dispatch: {}
+
+jobs:
+  ping:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+
+      - name: Install mongodb driver
+        run: npm install mongodb dotenv --no-save
+
+      - name: Ping MongoDB
+        env:
+          MONGODB_URI: ${{ secrets.MONGODB_URI }}
+          MONGODB_DB_NAME: ${{ secrets.MONGODB_DB_NAME }}
+        run: node scripts/keep-alive.js

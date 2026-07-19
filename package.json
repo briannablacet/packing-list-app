@@ -18,6 +18,7 @@
   "scripts": {
     "start": "react-scripts start",
     "server": "node server/index.js",
+    "keep-alive": "node scripts/keep-alive.js",
     "dev": "concurrently \"npm run server\" \"npm start\"",
     "build": "react-scripts build",
     "test": "react-scripts test",
