@@ -26,12 +26,27 @@ function App() {
   }, []);
 
   const loadItemsFromDatabase = async () => {
+    const maxAttempts = 3;
+    setLoading(true);
+
     try {
-      const data = await itemsApi.getItems();
-      setItems(data || []);
-    } catch (error) {
-      console.error('Error loading items:', error);
-      alert('Error loading items from database');
+      for (let attempt = 1; attempt <= maxAttempts; attempt += 1) {
+        try {
+          const data = await itemsApi.getItems();
+          setItems(data || []);
+          return;
+        } catch (error) {
+          console.error(`Error loading items (attempt ${attempt}/${maxAttempts}):`, error);
+
+          if (attempt === maxAttempts) {
+            alert('Error loading items from database. Please reload and try again.');
+            return;
+          }
+
+          // Cold starts (Vercel/Mongo) and local server boot often need a beat.
+          await new Promise((resolve) => setTimeout(resolve, 400 * attempt));
+        }
+      }
     } finally {
       setLoading(false);
     }

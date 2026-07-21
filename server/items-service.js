@@ -1,7 +1,8 @@
 const dotenv = require('dotenv');
 const { MongoClient, ObjectId } = require('mongodb');
 
-dotenv.config({ override: true });
+// Don't override platform env (Vercel) with a local .env file.
+dotenv.config({ override: !process.env.VERCEL });
 
 const mongoUri = process.env.MONGODB_URI;
 const databaseName = process.env.MONGODB_DB_NAME || 'packing-list-app';
@@ -11,14 +12,24 @@ if (!mongoUri) {
   throw new Error('Missing MONGODB_URI. Add it to your local .env file.');
 }
 
-let clientPromise;
+function getClientPromise() {
+  if (!global.__packingListMongoClientPromise) {
+    const client = new MongoClient(mongoUri, {
+      serverSelectionTimeoutMS: 10000,
+      connectTimeoutMS: 10000,
+      maxIdleTimeMS: 10000,
+      maxPoolSize: 5,
+    });
 
-if (global.__packingListMongoClientPromise) {
-  clientPromise = global.__packingListMongoClientPromise;
-} else {
-  const client = new MongoClient(mongoUri);
-  clientPromise = client.connect();
-  global.__packingListMongoClientPromise = clientPromise;
+    // If connect fails (common on cold start), clear the cache so the next
+    // request can retry instead of reusing a rejected promise forever.
+    global.__packingListMongoClientPromise = client.connect().catch((error) => {
+      global.__packingListMongoClientPromise = undefined;
+      throw error;
+    });
+  }
+
+  return global.__packingListMongoClientPromise;
 }
 
 function normalizeFlag(value) {
@@ -51,7 +62,7 @@ function sanitizeItem(payload = {}) {
 }
 
 async function getCollection() {
-  const client = await clientPromise;
+  const client = await getClientPromise();
   return client.db(databaseName).collection(collectionName);
 }
 
