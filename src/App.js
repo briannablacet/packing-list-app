@@ -237,6 +237,35 @@ function App() {
     setItems(updatedItems);
   };
 
+  const clearAllPacked = async () => {
+    const packedTripItems = items.filter(
+      (item) => item.bring_flag === 'YES' && item.packed_flag === 'YES'
+    );
+
+    if (packedTripItems.length === 0) return;
+
+    if (
+      !window.confirm(
+        'Clear packed status for all trip items? They’ll stay on your trip list — only the packed checkmarks reset.'
+      )
+    ) {
+      return;
+    }
+
+    const updatedItems = items.map((item) =>
+      item.bring_flag === 'YES' && item.packed_flag === 'YES'
+        ? { ...item, packed_flag: 'NO' }
+        : item
+    );
+    setItems(updatedItems);
+
+    await Promise.all(
+      packedTripItems.map((item) =>
+        updateItemInDatabase({ ...item, packed_flag: 'NO' })
+      )
+    );
+  };
+
   const loadSampleDataToDatabase = async () => {
     const sampleItems = [
       { bring_flag: 'NO', packed_flag: 'NO', items_to_pack: 'Laptop', category: 'Electronics', notes: 'Work laptop with charger' },
@@ -745,6 +774,26 @@ function App() {
           opacity: 0.8;
         }
 
+        .btn-clear-packed {
+          margin-top: 14px;
+          padding: 8px 16px;
+          border: 1px solid rgba(255, 255, 255, 0.45);
+          background: rgba(255, 255, 255, 0.15);
+          color: white;
+          border-radius: 6px;
+          font-size: 13px;
+          cursor: pointer;
+        }
+
+        .btn-clear-packed:hover {
+          background: rgba(255, 255, 255, 0.25);
+        }
+
+        .btn-clear-packed:disabled {
+          opacity: 0.5;
+          cursor: default;
+        }
+
         .import-section {
           background: #fff3cd;
           border: 1px solid #ffeaa7;
@@ -1094,6 +1143,14 @@ function App() {
                       <div className="stat-label">Complete</div>
                     </div>
                   </div>
+                  <button
+                    type="button"
+                    className="btn-clear-packed"
+                    onClick={clearAllPacked}
+                    disabled={packedItems.length === 0}
+                  >
+                    Clear packed status
+                  </button>
                 </div>
               )}
 
