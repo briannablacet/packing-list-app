@@ -1,10 +1,15 @@
 name: MongoDB Keep-Alive
 
-# Pings the Atlas cluster on a schedule so it never hits the
-# 60-day inactivity auto-pause. Any successful connection resets the clock.
+# Pings the Atlas cluster on a schedule so it never hits the 30-day
+# inactivity auto-pause (confirmed live 2026-09-18 — Atlas's real
+# threshold, not the 60 days originally assumed here). A bare ping alone
+# wasn't enough to prevent it either: this workflow ran successfully every
+# week, but Atlas still reported the cluster inactive. scripts/keep-alive.js
+# now also does a real findOne() against the actual collection, which is
+# what should genuinely reset the inactivity clock.
 on:
   schedule:
-    # Every Monday at 12:00 UTC (weekly is well within the 60-day window)
+    # Every Monday at 12:00 UTC (weekly is comfortably within the 30-day window)
     - cron: '0 12 * * 1'
   workflow_dispatch: {}
 
@@ -27,4 +32,5 @@ jobs:
         env:
           MONGODB_URI: ${{ secrets.MONGODB_URI }}
           MONGODB_DB_NAME: ${{ secrets.MONGODB_DB_NAME }}
+          MONGODB_COLLECTION: ${{ secrets.MONGODB_COLLECTION }}
         run: node scripts/keep-alive.js
