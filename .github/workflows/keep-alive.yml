@@ -7,11 +7,21 @@ name: MongoDB Keep-Alive
 # week, but Atlas still reported the cluster inactive. scripts/keep-alive.js
 # now also does a real findOne() against the actual collection, which is
 # what should genuinely reset the inactivity clock.
+#
+# GitHub switches OFF scheduled workflows in a repo with no activity for 60
+# days (and a scheduled run itself doesn't count as activity). That would
+# silently stop the keep-alive above, so the second job below makes one small
+# commit when the repo has been quiet for 30+ days. It runs weekly with the
+# rest of this file, so in practice that is about one commit a month.
 on:
   schedule:
     # Every Monday at 12:00 UTC (weekly is comfortably within the 30-day window)
     - cron: '0 12 * * 1'
   workflow_dispatch: {}
+
+# Read-only by default; only the job that needs to commit asks for more.
+permissions:
+  contents: read
 
 jobs:
   ping:
@@ -34,3 +44,31 @@ jobs:
           MONGODB_DB_NAME: ${{ secrets.MONGODB_DB_NAME }}
           MONGODB_COLLECTION: ${{ secrets.MONGODB_COLLECTION }}
         run: node scripts/keep-alive.js
+
+  keep-repo-active:
+    runs-on: ubuntu-latest
+    # Only this job can write to the repo, and it has no access to the MongoDB secrets.
+    permissions:
+      contents: write
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 1
+
+      - name: Commit if the repo has been quiet for 30+ days
+        run: |
+          last=$(git log -1 --format=%ct)
+          now=$(date +%s)
+          days=$(( (now - last) / 86400 ))
+          echo "Last commit was ${days} day(s) ago"
+          if [ "$days" -lt 30 ]; then
+            echo "Recent activity - nothing to do"
+            exit 0
+          fi
+          date -u +"%Y-%m-%dT%H:%M:%SZ" > .github/keepalive-last-run.txt
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add .github/keepalive-last-run.txt
+          git commit -m "Keep scheduled workflows active (no commits for ${days} days) [skip ci]"
+          git push
